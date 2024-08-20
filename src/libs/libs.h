@@ -15,6 +15,31 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifndef PK_LIB_MATH
+#define PK_LIB_MATH  1
+#endif
+#ifndef PK_LIB_TYPES
+#define PK_LIB_TYPES 1
+#endif
+#ifndef PK_LIB_TIME
+#define PK_LIB_TIME  1
+#endif
+#ifndef PK_LIB_IO
+#define PK_LIB_IO    1
+#endif
+#ifndef PK_LIB_PATH
+#define PK_LIB_PATH  1
+#endif
+#ifndef PK_LIB_OS
+#define PK_LIB_OS    1
+#endif
+#ifndef PK_LIB_JSON
+#define PK_LIB_JSON  1
+#endif
+#ifndef PK_LIB_TERM
+#define PK_LIB_TERM  1
+#endif
+
 // FIXME:
 // Since this are part of the "standard" pocketlang libraries, we can include
 // pocketlang internals here using the relative path, however it'll make these
