@@ -3,7 +3,7 @@
 ### floor
 
 ```ruby
-math.floor(value:Numberber) -> Numberber
+math.floor(value:Numberber) -> Number
 ```
 
 Return the floor value.

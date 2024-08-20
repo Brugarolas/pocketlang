@@ -14,7 +14,7 @@
 #define PK_PI 3.14159265358979323846
 
 DEF(stdMathFloor,
-  "math.floor(value:Numberber) -> Numberber",
+  "math.floor(value:Number) -> Number",
   "Return the floor value.") {
 
   double num;
