@@ -129,7 +129,7 @@ PKVM* pkNewVM(PkConfiguration* config) {
   vm->working_set_count = 0;
   vm->working_set_capacity = MIN_CAPACITY;
   vm->working_set = (Object**)vm->config.realloc_fn(
-                       NULL, sizeof(Object*) * vm->working_set_capacity, NULL);
+                       NULL, sizeof(Object*) * vm->working_set_capacity, config->user_data);
   vm->next_gc = INITIAL_GC_SIZE;
   vm->collecting_garbage = false;
   vm->min_heap_size = MIN_HEAP_SIZE;
