@@ -341,6 +341,9 @@ PK_PUBLIC void pkSetRuntimeError(PKVM* vm, const char* message);
 // Set a runtime error with C formated string.
 PK_PUBLIC void pkSetRuntimeErrorFmt(PKVM* vm, const char* fmt, ...);
 
+// Get any current runtime error as a C string.
+PK_PUBLIC const char* pkGetRuntimeError(PKVM* vm);
+
 // Returns native [self] of the current method as a void*.
 PK_PUBLIC void* pkGetSelf(const PKVM* vm);
 

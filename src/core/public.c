@@ -578,6 +578,14 @@ void pkSetRuntimeErrorFmt(PKVM* vm, const char* fmt, ...) {
   va_end(args);
 }
 
+const char* pkGetRuntimeError(PKVM* vm) {
+  if (VM_HAS_ERROR(vm)) {
+    return vm->fiber->error->data;
+  } else {
+    return NULL;
+  }
+}
+
 void* pkGetSelf(const PKVM* vm) {
   CHECK_FIBER_EXISTS(vm);
   ASSERT(IS_OBJ_TYPE(vm->fiber->self, OBJ_INST), OOPS);
