@@ -994,7 +994,7 @@ bool pkMapGet(PKVM* vm, int index, int key, int value) {
   Var result = mapGet(map, key);
   SET_SLOT(value, result);
 
-  return !IS_NULL(result);
+  return result != VAR_UNDEFINED;
 }
 
 bool pkMapStackStringGet(PKVM* vm, int index, const char* key, int value) {
@@ -1030,7 +1030,7 @@ bool pkMapStackStringGet(PKVM* vm, int index, const char* key, int value) {
   Var result = mapGet(map, VAR_OBJ(temporaryString));
   SET_SLOT(value, result);
 
-  return !IS_NULL(result);
+  return result != VAR_UNDEFINED;
 }
 
 bool pkMapSet(PKVM* vm, int index, int key, int value) {
