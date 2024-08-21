@@ -605,6 +605,10 @@ const char* pkGetRuntimeError(PKVM* vm) {
   }
 }
 
+bool pkHasRuntimeError(PKVM* vm) {
+  return VM_HAS_ERROR(vm);
+}
+
 void* pkGetSelf(const PKVM* vm) {
   CHECK_FIBER_EXISTS(vm);
   ASSERT(IS_OBJ_TYPE(vm->fiber->self, OBJ_INST), OOPS);
@@ -1176,6 +1180,22 @@ bool pkCallMethod(PKVM* vm, int instance, const char* method,
   VM_SET_ERROR(vm, stringFormat(vm, "Instance has no method named '$'.",
                                 method));
   return false;
+}
+
+bool pkGetMethod(PKVM* vm, int instance, const char* method, int value) {
+  VALIDATE_SLOT_INDEX(instance);
+  VALIDATE_SLOT_INDEX(value);
+  String* methodName = newString(vm, method);
+  vmPushTempRef(vm, &methodName->_super); // smethod.
+  Closure* callable = NULL;
+  bool is_method = hasMethod(vm, SLOT(instance), methodName, &callable);
+  vmPopTempRef(vm);
+  if (is_method) {
+    SET_SLOT(value, VAR_OBJ(callable));
+  } else {
+    SET_SLOT(value, VAR_NULL);
+  }
+  return is_method;
 }
 
 void pkPlaceSelf(PKVM* vm, int index) {

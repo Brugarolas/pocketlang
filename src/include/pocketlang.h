@@ -353,6 +353,8 @@ PK_PUBLIC void pkSetRuntimeErrorFmt(PKVM* vm, const char* fmt, ...);
 // Get any current runtime error as a C string.
 PK_PUBLIC const char* pkGetRuntimeError(PKVM* vm);
 
+PK_PUBLIC bool pkHasRuntimeError(PKVM* vm);
+
 // Returns native [self] of the current method as a void*.
 PK_PUBLIC void* pkGetSelf(const PKVM* vm);
 
@@ -541,6 +543,8 @@ PK_PUBLIC bool pkCallFunction(PKVM* vm, int fn, int argc, int argv, int ret);
 // [ret] < 0 the return value will be discarded.
 PK_PUBLIC bool pkCallMethod(PKVM* vm, int instance, const char* method,
                             int argc, int argv, int ret);
+
+PK_PUBLIC bool pkGetMethod(PKVM* vm, int instance, const char* method, int value);
 
 // Get the attribute with [name] of the instance at the [instance] slot and
 // place it at the [index] slot. Return true on success.
