@@ -338,15 +338,12 @@ void pkReleaseHandle(PKVM* vm, PkHandle* handle) {
   DEALLOCATE(vm, handle, PkHandle);
 }
 
-PkResult pkRunString(PKVM* vm, const char* source) {
-
+PkResult pkRunStringWithPath(PKVM* vm, const char* path, const char* source) {
   PkResult result = PK_RESULT_SUCCESS;
-
-  // Create a temproary module for the source.
   Module* module = newModule(vm);
   vmPushTempRef(vm, &module->_super); // module.
   {
-    module->path = newString(vm, "@(String)");
+    module->path = newString(vm, path);
     result = compile(vm, module, source, NULL);
     if (result != PK_RESULT_SUCCESS) return result;
 
@@ -361,8 +358,11 @@ PkResult pkRunString(PKVM* vm, const char* source) {
     result = vmRunFiber(vm, fiber);
   }
   vmPopTempRef(vm); // module.
-
   return result;
+}
+
+PkResult pkRunString(PKVM* vm, const char* source) {
+  return pkRunStringWithPath(vm, "@(String)", source);
 }
 
 PkResult pkRunFile(PKVM* vm, const char* path) {
