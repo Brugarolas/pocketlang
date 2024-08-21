@@ -958,6 +958,82 @@ void pkNewMap(PKVM* vm, int index) {
   SET_SLOT(index, VAR_OBJ(newMap(vm)));
 }
 
+bool pkMapGet(PKVM* vm, int index, int key, int value) {
+  CHECK_FIBER_EXISTS(vm);
+  VALIDATE_SLOT_INDEX(index);
+  VALIDATE_SLOT_INDEX(key);
+  VALIDATE_SLOT_INDEX(value);
+
+  Var mapVar = ARG(index);
+  if (!IS_OBJ_TYPE(mapVar, OBJ_MAP)) {
+    ERR_INVALID_SLOT_TYPE(index, "Map");
+    return false;
+  }
+
+  Map* map = (Map*) AS_OBJ(mapVar);
+  Var keyVar = ARG(key);
+  Var result = mapGet(map, key);
+  SET_SLOT(value, result);
+
+  return !IS_NULL(result);
+}
+
+bool pkMapStackStringGet(PKVM* vm, int index, const char* key, int value) {
+  CHECK_FIBER_EXISTS(vm);
+  VALIDATE_SLOT_INDEX(index);
+  VALIDATE_SLOT_INDEX(value);
+
+  Var mapVar = ARG(index);
+  if (!IS_OBJ_TYPE(mapVar, OBJ_MAP)) {
+    ERR_INVALID_SLOT_TYPE(index, "Map");
+    return false;
+  }
+
+  Map* map = (Map*) AS_OBJ(mapVar);
+  int keyLength = strlen(key);
+
+  if (keyLength > PK_STACK_STRING_MAX_LENGTH) {
+    pkSetRuntimeErrorFmt(vm, "key passed to pkMapStackStringGet() is over length threshold (%d)", PK_STACK_STRING_MAX_LENGTH);
+    return false;
+  }
+
+  int requiredStringSpace = sizeof(String) + sizeof(char) * keyLength + 1;
+  char stringData[requiredStringSpace];
+  String* temporaryString = (String*) stringData;
+
+  temporaryString->_super.type = OBJ_STRING;
+  temporaryString->capacity = keyLength + 1;
+  temporaryString->length = keyLength;
+  memcpy(temporaryString->data, key, keyLength);
+  temporaryString->data[keyLength] = '\0';
+  temporaryString->hash = utilHashString(temporaryString->data);
+
+  Var result = mapGet(map, VAR_OBJ(temporaryString));
+  SET_SLOT(value, result);
+
+  return !IS_NULL(result);
+}
+
+bool pkMapSet(PKVM* vm, int index, int key, int value) {
+  CHECK_FIBER_EXISTS(vm);
+  VALIDATE_SLOT_INDEX(index);
+  VALIDATE_SLOT_INDEX(key);
+  VALIDATE_SLOT_INDEX(value);
+
+  Var mapVar = ARG(index);
+  if (!IS_OBJ_TYPE(mapVar, OBJ_MAP)) {
+    ERR_INVALID_SLOT_TYPE(index, "Map");
+    return false;
+  }
+
+  Map* map = (Map*) AS_OBJ(mapVar);
+  Var keyVar = ARG(key);
+  Var valueVar = ARG(value);
+  mapSet(vm, map, keyVar, valueVar);
+
+  return true;
+}
+
 bool pkListInsert(PKVM* vm, int list, int32_t index, int value) {
   CHECK_FIBER_EXISTS(vm);
   VALIDATE_SLOT_INDEX(list);

@@ -30,6 +30,10 @@ extern "C" {
 // String representation of the version.
 #define PK_VERSION_STRING "0.1.0"
 
+#ifndef PK_STACK_STRING_MAX_LENGTH
+  #define PK_STACK_STRING_MAX_LENGTH 64
+#endif
+
 // Pocketlang visibility macros. define PK_DLL for using pocketlang as a 
 // shared library and define PK_COMPILE to export symbols when compiling the
 // pocketlang it self as a shared library.
@@ -489,6 +493,24 @@ PK_PUBLIC void pkNewList(PKVM* vm, int index);
 
 // Create a new Map object and place it at [index] slot.
 PK_PUBLIC void pkNewMap(PKVM* vm, int index);
+
+// Look up the key in [key] slot from the map at [index] and place it in slot
+// [value]. Returns whether the key exists in the map. If it does not, the
+// [value] slot will contain Null.
+PK_PUBLIC bool pkMapGet(PKVM* vm, int index, int key, int value);
+
+// Look up a string key from the map at [index] and place it in slot [value].
+// Returns whether the key exists in the map.
+//
+// This function can only be called with keys of length <=
+// PK_STACK_STRING_LENGTH_THRESHOLD as it allocates a temporary string object on
+// the stack.
+PK_PUBLIC bool pkMapStackStringGet(PKVM* vm, int index, const char* key, int value);
+
+// Set the key [key] in the map at [index] to the value in slot [value].
+PK_PUBLIC bool pkMapSet(PKVM* vm, int index, int key, int value);
+
+PK_PUBLIC bool pkMapStackStringSet(PKVM* vm, int index, const char* key, int value);
 
 // Insert [value] to the [list] at the [index], if the index is less than zero,
 // it'll count from backwards. ie. insert[-1] == insert[list.length].
