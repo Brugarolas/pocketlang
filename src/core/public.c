@@ -253,6 +253,35 @@ void pkModuleAddFunction(PKVM* vm, PkHandle* module, const char* name,
                             name, fptr, arity, docstring);
 }
 
+bool pkModuleFindClass(PKVM* vm, PkHandle* module, const char* name, int index) {
+  CHECK_HANDLE_TYPE(module, OBJ_MODULE);
+  VALIDATE_SLOT_INDEX(index);
+  CHECK_ARG_NULL(name);
+
+  int nameLength = strlen(name);
+  Var found = VAR_NULL;
+  Module* actualModule = (Module*)AS_OBJ(module->value);
+  vmPushTempRef(vm, AS_OBJ(module->value));
+  for (uint32_t i = 0; i < actualModule->globals.count; i++) {
+    uint nameIndex = actualModule->global_names.data[i];
+    Var global = actualModule->globals.data[i];
+    if (IS_CSTR_EQ(AS_STRING(actualModule->constants.data[nameIndex]), name, nameLength)) {
+      if (IS_OBJ_TYPE(global, OBJ_CLASS)) {
+        found = global;
+      }
+      break;
+    }
+  }
+  vmPopTempRef(vm);
+  if (IS_NULL(found)) {
+    pkSetSlotNull(vm, index);
+    return false;
+  } else {
+    SET_SLOT(index, found);
+    return true;
+  }
+}
+
 PkHandle* pkNewClass(PKVM* vm, const char* name,
                      PkHandle* base_class, PkHandle* module,
                      pkNewInstanceFn new_fn,
