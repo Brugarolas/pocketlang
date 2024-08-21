@@ -338,6 +338,25 @@ void pkReleaseHandle(PKVM* vm, PkHandle* handle) {
   DEALLOCATE(vm, handle, PkHandle);
 }
 
+PkResult pkRunModule(PKVM* vm, PkHandle* module) {
+  CHECK_HANDLE_TYPE(module, OBJ_MODULE);
+
+  PkResult result;
+
+  Module* actualModule = (Module*)AS_OBJ(module->value);
+  vmPushTempRef(vm, &actualModule->_super);
+  {
+    Fiber* fiber = newFiber(vm, actualModule->body);
+    vmPushTempRef(vm, &fiber->_super);
+    vmPrepareFiber(vm, fiber, 0, NULL);
+    vmPopTempRef(vm);
+    result = vmRunFiber(vm, fiber);
+  }
+  vmPopTempRef(vm);
+
+  return result;
+}
+
 PkResult pkRunStringWithPath(PKVM* vm, const char* path, const char* source) {
   PkResult result = PK_RESULT_SUCCESS;
   Module* module = newModule(vm);

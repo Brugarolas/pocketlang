@@ -320,6 +320,7 @@ PK_PUBLIC void pkClassAddMethod(PKVM* vm, PkHandle* cls,
 PK_PUBLIC void pkModuleAddSource(PKVM* vm, PkHandle* module,
                                  const char* source);
 
+PK_PUBLIC PkResult pkRunModule(PKVM* vm, PkHandle* module);
 
 // Run a source string, setting its path to [path]. Specifying the path can be
 // helpful for debugging. The [source] must be valid until the function returns.
