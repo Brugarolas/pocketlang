@@ -387,6 +387,18 @@ PK_PUBLIC bool pkValidateSlotInstanceOf(PKVM* vm, int slot, int cls);
 // and return false.
 PK_PUBLIC bool pkIsSlotInstanceOf(PKVM* vm, int inst, int cls, bool* val);
 
+PK_PUBLIC bool pkIsSlotBool(PKVM* vm, int index);
+
+PK_PUBLIC bool pkIsSlotNumber(PKVM* vm, int index);
+
+PK_PUBLIC bool pkIsSlotString(PKVM* vm, int index);
+
+PK_PUBLIC bool pkIsSlotNull(PKVM* vm, int index);
+
+PK_PUBLIC bool pkIsSlotMap(PKVM* vm, int index);
+
+PK_PUBLIC bool pkIsSlotList(PKVM* vm, int index);
+
 // Make sure the fiber has [count] number of slots to work with (including the
 // arguments).
 PK_PUBLIC void pkReserveSlots(PKVM* vm, int count);

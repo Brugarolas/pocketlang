@@ -743,6 +743,36 @@ PkVarType pkGetSlotType(PKVM* vm, int index) {
   return getVarType(SLOT(index));
 }
 
+bool pkIsSlotBool(PKVM* vm, int index) {
+  VALIDATE_SLOT_INDEX(index);
+  return getVarType(SLOT(index)) == PK_BOOL;
+}
+
+bool pkIsSlotNumber(PKVM* vm, int index) {
+  VALIDATE_SLOT_INDEX(index);
+  return getVarType(SLOT(index)) == PK_NUMBER;
+}
+
+bool pkIsSlotString(PKVM* vm, int index) {
+  VALIDATE_SLOT_INDEX(index);
+  return getVarType(SLOT(index)) == PK_STRING;
+}
+
+bool pkIsSlotNull(PKVM* vm, int index) {
+  VALIDATE_SLOT_INDEX(index);
+  return getVarType(SLOT(index)) == PK_NULL;
+}
+
+bool pkIsSlotMap(PKVM* vm, int index) {
+  VALIDATE_SLOT_INDEX(index);
+  return getVarType(SLOT(index)) == PK_MAP;
+}
+
+bool pkIsSlotList(PKVM* vm, int index) {
+  VALIDATE_SLOT_INDEX(index);
+  return getVarType(SLOT(index)) == PK_LIST;
+}
+
 bool pkGetSlotBool(PKVM* vm, int index) {
   CHECK_FIBER_EXISTS(vm);
   VALIDATE_SLOT_INDEX(index);
