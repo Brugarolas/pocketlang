@@ -2054,6 +2054,14 @@ void exprAnd(Compiler* compiler) {
 static void exprBinaryOp(Compiler* compiler) {
   _TokenType op = compiler->parser.previous.type;
   skipNewLines(compiler);
+
+  // Have to check this before continuing parsing as `is not` is two tokens but
+  // one operator.
+  bool isIsNot = false;
+  if (op == TK_IS) {
+    isIsNot = match(compiler, TK_NOT);
+  }
+
   parsePrecedence(compiler, (Precedence)(getRule(op)->precedence + 1));
 
   // Emits the opcode and 0 (means false) as inplace operation.
@@ -2082,7 +2090,13 @@ static void exprBinaryOp(Compiler* compiler) {
     case TK_GTEQ:    emitOpcode(compiler, OP_GTEQ);  break;
     case TK_LTEQ:    emitOpcode(compiler, OP_LTEQ);  break;
     case TK_IN:      emitOpcode(compiler, OP_IN);    break;
-    case TK_IS:      emitOpcode(compiler, OP_IS);    break;
+    case TK_IS: {
+      emitOpcode(compiler, OP_IS);
+      if (isIsNot) {
+        emitOpcode(compiler, OP_NOT);
+      }
+      break;
+    }
     default:
       UNREACHABLE();
   }
