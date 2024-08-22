@@ -900,6 +900,12 @@ void pkSetSlotNumber(PKVM* vm, int index, double value) {
   SET_SLOT(index, VAR_NUM(value));
 }
 
+void pkSetSlotInteger(PKVM* vm, int index, int32_t value) {
+  CHECK_FIBER_EXISTS(vm);
+  VALIDATE_SLOT_INDEX(index);
+  SET_SLOT(index, VAR_INT(value));
+}
+
 void pkSetSlotString(PKVM* vm, int index, const char* value) {
   CHECK_FIBER_EXISTS(vm);
   VALIDATE_SLOT_INDEX(index);

@@ -459,6 +459,9 @@ PK_PUBLIC void pkSetSlotBool(PKVM* vm, int index, bool value);
 // Set the [index] slot numeric value as the given [value].
 PK_PUBLIC void pkSetSlotNumber(PKVM* vm, int index, double value);
 
+// Set the value of slot [index] to the given integer.
+PK_PUBLIC void pkSetSlotInteger(PKVM* vm, int index, int32_t value);
+
 // Create a new String copying the [value] and set it to [index] slot.
 PK_PUBLIC void pkSetSlotString(PKVM* vm, int index, const char* value);
 
