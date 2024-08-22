@@ -348,6 +348,8 @@ PK_PUBLIC PkResult pkRunREPL(PKVM* vm);
 /* NATIVE / RUNTIME FUNCTION API                                             */
 /*****************************************************************************/
 
+PK_PUBLIC void pkClearRuntimeError(PKVM* vm);
+
 // Set a runtime error to VM.
 PK_PUBLIC void pkSetRuntimeError(PKVM* vm, const char* message);
 

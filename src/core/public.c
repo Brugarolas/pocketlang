@@ -619,6 +619,13 @@ PkResult pkRunREPL(PKVM* vm) {
 /* RUNTIME                                                                   */
 /*****************************************************************************/
 
+void pkClearRuntimeError(PKVM* vm) {
+  vm->last_error = NULL;
+  if (vm->fiber) {
+    vm->fiber->error = NULL;
+  }
+}
+
 void pkSetRuntimeError(PKVM* vm, const char* message) {
   CHECK_FIBER_EXISTS(vm);
   VM_SET_ERROR(vm, newString(vm, message));
