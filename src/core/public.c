@@ -633,7 +633,7 @@ void pkSetRuntimeErrorFmt(PKVM* vm, const char* fmt, ...) {
 
 const char* pkGetRuntimeError(PKVM* vm) {
   if (VM_HAS_ERROR(vm)) {
-    return vm->fiber->error->data;
+    return vm->last_error->data;
   } else {
     return NULL;
   }

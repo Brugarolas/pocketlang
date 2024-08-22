@@ -38,12 +38,13 @@
 #define HEAP_FILL_PERCENT 75
 
 // Evaluated to "true" if a runtime error set on the current fiber.
-#define VM_HAS_ERROR(vm) (vm->fiber->error != NULL)
+#define VM_HAS_ERROR(vm) (vm->last_error != NULL)
 
 // Set the error message [err] to the [vm]'s current fiber.
 #define VM_SET_ERROR(vm, err)        \
   do {                               \
     ASSERT(!VM_HAS_ERROR(vm), OOPS); \
+    (vm->last_error = err);          \
     (vm->fiber->error = err);        \
   } while (false)
 
@@ -132,6 +133,7 @@ struct PKVM {
 
   // Current fiber.
   Fiber* fiber;
+  String* last_error;
 };
 
 // A realloc() function wrapper which handles memory allocations of the VM.

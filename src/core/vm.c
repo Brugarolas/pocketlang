@@ -80,6 +80,9 @@ Module* vmGetModule(PKVM* vm, String* key) {
 }
 
 void vmCollectGarbage(PKVM* vm) {
+  if (vm->last_error != NULL) {
+    markObject(vm, &vm->last_error->_super);
+  }
 
   // Mark builtin functions.
   for (int i = 0; i < vm->builtins_count; i++) {
