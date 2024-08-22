@@ -20,13 +20,20 @@ typedef void (*pkReleaseHandle_t)(PKVM*, PkHandle*);
 typedef PkHandle* (*pkNewModule_t)(PKVM*, const char*);
 typedef void (*pkRegisterModule_t)(PKVM*, PkHandle*);
 typedef void (*pkModuleAddFunction_t)(PKVM*, PkHandle*, const char*, pkNativeFn, int, const char*);
+typedef bool (*pkModuleFindClass_t)(PKVM*, PkHandle*, const char*, int);
+typedef void (*pkModuleSetPath_t)(PKVM*, PkHandle*, const char*);
 typedef PkHandle* (*pkNewClass_t)(PKVM*, const char*, PkHandle*, PkHandle*, pkNewInstanceFn, pkDeleteInstanceFn, const char*);
 typedef void (*pkClassAddMethod_t)(PKVM*, PkHandle*, const char*, pkNativeFn, int, const char*);
 typedef void (*pkModuleAddSource_t)(PKVM*, PkHandle*, const char*);
+typedef PkResult (*pkRunModule_t)(PKVM*, PkHandle*);
+typedef PkResult (*pkRunStringWithPath_t)(PKVM*, const char*, const char*);
 typedef PkResult (*pkRunString_t)(PKVM*, const char*);
 typedef PkResult (*pkRunFile_t)(PKVM*, const char*);
 typedef PkResult (*pkRunREPL_t)(PKVM*);
+typedef void (*pkClearRuntimeError_t)(PKVM*);
 typedef void (*pkSetRuntimeError_t)(PKVM*, const char*);
+typedef const char* (*pkGetRuntimeError_t)(PKVM*);
+typedef bool (*pkHasRuntimeError_t)(PKVM*);
 typedef void* (*pkGetSelf_t)(const PKVM*);
 typedef int (*pkGetArgc_t)(const PKVM*);
 typedef bool (*pkCheckArgcRange_t)(PKVM*, int, int, int);
@@ -37,6 +44,12 @@ typedef bool (*pkValidateSlotString_t)(PKVM*, int, const char**, uint32_t*);
 typedef bool (*pkValidateSlotType_t)(PKVM*, int, PkVarType);
 typedef bool (*pkValidateSlotInstanceOf_t)(PKVM*, int, int);
 typedef bool (*pkIsSlotInstanceOf_t)(PKVM*, int, int, bool*);
+typedef bool (*pkIsSlotBool_t)(PKVM*, int);
+typedef bool (*pkIsSlotNumber_t)(PKVM*, int);
+typedef bool (*pkIsSlotString_t)(PKVM*, int);
+typedef bool (*pkIsSlotNull_t)(PKVM*, int);
+typedef bool (*pkIsSlotMap_t)(PKVM*, int);
+typedef bool (*pkIsSlotList_t)(PKVM*, int);
 typedef void (*pkReserveSlots_t)(PKVM*, int);
 typedef int (*pkGetSlotsCount_t)(PKVM*);
 typedef PkVarType (*pkGetSlotType_t)(PKVM*, int);
@@ -58,11 +71,16 @@ typedef bool (*pkNewInstance_t)(PKVM*, int, int, int, int);
 typedef void (*pkNewRange_t)(PKVM*, int, double, double);
 typedef void (*pkNewList_t)(PKVM*, int);
 typedef void (*pkNewMap_t)(PKVM*, int);
+typedef bool (*pkMapGet_t)(PKVM*, int, int, int);
+typedef bool (*pkMapStackStringGet_t)(PKVM*, int, const char*, int);
+typedef bool (*pkMapSet_t)(PKVM*, int, int, int);
+typedef bool (*pkMapStackStringSet_t)(PKVM*, int, const char*, int);
 typedef bool (*pkListInsert_t)(PKVM*, int, int32_t, int);
 typedef bool (*pkListPop_t)(PKVM*, int, int32_t, int);
 typedef uint32_t (*pkListLength_t)(PKVM*, int);
 typedef bool (*pkCallFunction_t)(PKVM*, int, int, int, int);
 typedef bool (*pkCallMethod_t)(PKVM*, int, const char*, int, int, int);
+typedef bool (*pkGetMethod_t)(PKVM*, int, const char*, int);
 typedef bool (*pkGetAttribute_t)(PKVM*, int, const char*, int);
 typedef bool (*pkSetAttribute_t)(PKVM*, int, const char*, int);
 typedef bool (*pkImportModule_t)(PKVM*, const char*, int);
@@ -80,13 +98,20 @@ typedef struct {
   pkNewModule_t pkNewModule_ptr;
   pkRegisterModule_t pkRegisterModule_ptr;
   pkModuleAddFunction_t pkModuleAddFunction_ptr;
+  pkModuleFindClass_t pkModuleFindClass_ptr;
+  pkModuleSetPath_t pkModuleSetPath_ptr;
   pkNewClass_t pkNewClass_ptr;
   pkClassAddMethod_t pkClassAddMethod_ptr;
   pkModuleAddSource_t pkModuleAddSource_ptr;
+  pkRunModule_t pkRunModule_ptr;
+  pkRunStringWithPath_t pkRunStringWithPath_ptr;
   pkRunString_t pkRunString_ptr;
   pkRunFile_t pkRunFile_ptr;
   pkRunREPL_t pkRunREPL_ptr;
+  pkClearRuntimeError_t pkClearRuntimeError_ptr;
   pkSetRuntimeError_t pkSetRuntimeError_ptr;
+  pkGetRuntimeError_t pkGetRuntimeError_ptr;
+  pkHasRuntimeError_t pkHasRuntimeError_ptr;
   pkGetSelf_t pkGetSelf_ptr;
   pkGetArgc_t pkGetArgc_ptr;
   pkCheckArgcRange_t pkCheckArgcRange_ptr;
@@ -97,6 +122,12 @@ typedef struct {
   pkValidateSlotType_t pkValidateSlotType_ptr;
   pkValidateSlotInstanceOf_t pkValidateSlotInstanceOf_ptr;
   pkIsSlotInstanceOf_t pkIsSlotInstanceOf_ptr;
+  pkIsSlotBool_t pkIsSlotBool_ptr;
+  pkIsSlotNumber_t pkIsSlotNumber_ptr;
+  pkIsSlotString_t pkIsSlotString_ptr;
+  pkIsSlotNull_t pkIsSlotNull_ptr;
+  pkIsSlotMap_t pkIsSlotMap_ptr;
+  pkIsSlotList_t pkIsSlotList_ptr;
   pkReserveSlots_t pkReserveSlots_ptr;
   pkGetSlotsCount_t pkGetSlotsCount_ptr;
   pkGetSlotType_t pkGetSlotType_ptr;
@@ -118,11 +149,16 @@ typedef struct {
   pkNewRange_t pkNewRange_ptr;
   pkNewList_t pkNewList_ptr;
   pkNewMap_t pkNewMap_ptr;
+  pkMapGet_t pkMapGet_ptr;
+  pkMapStackStringGet_t pkMapStackStringGet_ptr;
+  pkMapSet_t pkMapSet_ptr;
+  pkMapStackStringSet_t pkMapStackStringSet_ptr;
   pkListInsert_t pkListInsert_ptr;
   pkListPop_t pkListPop_ptr;
   pkListLength_t pkListLength_ptr;
   pkCallFunction_t pkCallFunction_ptr;
   pkCallMethod_t pkCallMethod_ptr;
+  pkGetMethod_t pkGetMethod_ptr;
   pkGetAttribute_t pkGetAttribute_ptr;
   pkSetAttribute_t pkSetAttribute_ptr;
   pkImportModule_t pkImportModule_ptr;
@@ -143,13 +179,20 @@ PK_EXPORT void pkInitApi(PkNativeApi* api) {
   pk_api.pkNewModule_ptr = api->pkNewModule_ptr;
   pk_api.pkRegisterModule_ptr = api->pkRegisterModule_ptr;
   pk_api.pkModuleAddFunction_ptr = api->pkModuleAddFunction_ptr;
+  pk_api.pkModuleFindClass_ptr = api->pkModuleFindClass_ptr;
+  pk_api.pkModuleSetPath_ptr = api->pkModuleSetPath_ptr;
   pk_api.pkNewClass_ptr = api->pkNewClass_ptr;
   pk_api.pkClassAddMethod_ptr = api->pkClassAddMethod_ptr;
   pk_api.pkModuleAddSource_ptr = api->pkModuleAddSource_ptr;
+  pk_api.pkRunModule_ptr = api->pkRunModule_ptr;
+  pk_api.pkRunStringWithPath_ptr = api->pkRunStringWithPath_ptr;
   pk_api.pkRunString_ptr = api->pkRunString_ptr;
   pk_api.pkRunFile_ptr = api->pkRunFile_ptr;
   pk_api.pkRunREPL_ptr = api->pkRunREPL_ptr;
+  pk_api.pkClearRuntimeError_ptr = api->pkClearRuntimeError_ptr;
   pk_api.pkSetRuntimeError_ptr = api->pkSetRuntimeError_ptr;
+  pk_api.pkGetRuntimeError_ptr = api->pkGetRuntimeError_ptr;
+  pk_api.pkHasRuntimeError_ptr = api->pkHasRuntimeError_ptr;
   pk_api.pkGetSelf_ptr = api->pkGetSelf_ptr;
   pk_api.pkGetArgc_ptr = api->pkGetArgc_ptr;
   pk_api.pkCheckArgcRange_ptr = api->pkCheckArgcRange_ptr;
@@ -160,6 +203,12 @@ PK_EXPORT void pkInitApi(PkNativeApi* api) {
   pk_api.pkValidateSlotType_ptr = api->pkValidateSlotType_ptr;
   pk_api.pkValidateSlotInstanceOf_ptr = api->pkValidateSlotInstanceOf_ptr;
   pk_api.pkIsSlotInstanceOf_ptr = api->pkIsSlotInstanceOf_ptr;
+  pk_api.pkIsSlotBool_ptr = api->pkIsSlotBool_ptr;
+  pk_api.pkIsSlotNumber_ptr = api->pkIsSlotNumber_ptr;
+  pk_api.pkIsSlotString_ptr = api->pkIsSlotString_ptr;
+  pk_api.pkIsSlotNull_ptr = api->pkIsSlotNull_ptr;
+  pk_api.pkIsSlotMap_ptr = api->pkIsSlotMap_ptr;
+  pk_api.pkIsSlotList_ptr = api->pkIsSlotList_ptr;
   pk_api.pkReserveSlots_ptr = api->pkReserveSlots_ptr;
   pk_api.pkGetSlotsCount_ptr = api->pkGetSlotsCount_ptr;
   pk_api.pkGetSlotType_ptr = api->pkGetSlotType_ptr;
@@ -181,11 +230,16 @@ PK_EXPORT void pkInitApi(PkNativeApi* api) {
   pk_api.pkNewRange_ptr = api->pkNewRange_ptr;
   pk_api.pkNewList_ptr = api->pkNewList_ptr;
   pk_api.pkNewMap_ptr = api->pkNewMap_ptr;
+  pk_api.pkMapGet_ptr = api->pkMapGet_ptr;
+  pk_api.pkMapStackStringGet_ptr = api->pkMapStackStringGet_ptr;
+  pk_api.pkMapSet_ptr = api->pkMapSet_ptr;
+  pk_api.pkMapStackStringSet_ptr = api->pkMapStackStringSet_ptr;
   pk_api.pkListInsert_ptr = api->pkListInsert_ptr;
   pk_api.pkListPop_ptr = api->pkListPop_ptr;
   pk_api.pkListLength_ptr = api->pkListLength_ptr;
   pk_api.pkCallFunction_ptr = api->pkCallFunction_ptr;
   pk_api.pkCallMethod_ptr = api->pkCallMethod_ptr;
+  pk_api.pkGetMethod_ptr = api->pkGetMethod_ptr;
   pk_api.pkGetAttribute_ptr = api->pkGetAttribute_ptr;
   pk_api.pkSetAttribute_ptr = api->pkSetAttribute_ptr;
   pk_api.pkImportModule_ptr = api->pkImportModule_ptr;
@@ -239,6 +293,14 @@ void pkModuleAddFunction(PKVM* vm, PkHandle* module, const char* name, pkNativeF
   pk_api.pkModuleAddFunction_ptr(vm, module, name, fptr, arity, docstring);
 }
 
+bool pkModuleFindClass(PKVM* vm, PkHandle* module, const char* name, int index) {
+  return pk_api.pkModuleFindClass_ptr(vm, module, name, index);
+}
+
+void pkModuleSetPath(PKVM* vm, PkHandle* module, const char* path) {
+  pk_api.pkModuleSetPath_ptr(vm, module, path);
+}
+
 PkHandle* pkNewClass(PKVM* vm, const char* name, PkHandle* base_class, PkHandle* module, pkNewInstanceFn new_fn, pkDeleteInstanceFn delete_fn, const char* docstring) {
   return pk_api.pkNewClass_ptr(vm, name, base_class, module, new_fn, delete_fn, docstring);
 }
@@ -249,6 +311,14 @@ void pkClassAddMethod(PKVM* vm, PkHandle* cls, const char* name, pkNativeFn fptr
 
 void pkModuleAddSource(PKVM* vm, PkHandle* module, const char* source) {
   pk_api.pkModuleAddSource_ptr(vm, module, source);
+}
+
+PkResult pkRunModule(PKVM* vm, PkHandle* module) {
+  return pk_api.pkRunModule_ptr(vm, module);
+}
+
+PkResult pkRunStringWithPath(PKVM* vm, const char* path, const char* source) {
+  return pk_api.pkRunStringWithPath_ptr(vm, path, source);
 }
 
 PkResult pkRunString(PKVM* vm, const char* source) {
@@ -263,8 +333,20 @@ PkResult pkRunREPL(PKVM* vm) {
   return pk_api.pkRunREPL_ptr(vm);
 }
 
+void pkClearRuntimeError(PKVM* vm) {
+  pk_api.pkClearRuntimeError_ptr(vm);
+}
+
 void pkSetRuntimeError(PKVM* vm, const char* message) {
   pk_api.pkSetRuntimeError_ptr(vm, message);
+}
+
+const char* pkGetRuntimeError(PKVM* vm) {
+  return pk_api.pkGetRuntimeError_ptr(vm);
+}
+
+bool pkHasRuntimeError(PKVM* vm) {
+  return pk_api.pkHasRuntimeError_ptr(vm);
 }
 
 void* pkGetSelf(const PKVM* vm) {
@@ -305,6 +387,30 @@ bool pkValidateSlotInstanceOf(PKVM* vm, int slot, int cls) {
 
 bool pkIsSlotInstanceOf(PKVM* vm, int inst, int cls, bool* val) {
   return pk_api.pkIsSlotInstanceOf_ptr(vm, inst, cls, val);
+}
+
+bool pkIsSlotBool(PKVM* vm, int index) {
+  return pk_api.pkIsSlotBool_ptr(vm, index);
+}
+
+bool pkIsSlotNumber(PKVM* vm, int index) {
+  return pk_api.pkIsSlotNumber_ptr(vm, index);
+}
+
+bool pkIsSlotString(PKVM* vm, int index) {
+  return pk_api.pkIsSlotString_ptr(vm, index);
+}
+
+bool pkIsSlotNull(PKVM* vm, int index) {
+  return pk_api.pkIsSlotNull_ptr(vm, index);
+}
+
+bool pkIsSlotMap(PKVM* vm, int index) {
+  return pk_api.pkIsSlotMap_ptr(vm, index);
+}
+
+bool pkIsSlotList(PKVM* vm, int index) {
+  return pk_api.pkIsSlotList_ptr(vm, index);
 }
 
 void pkReserveSlots(PKVM* vm, int count) {
@@ -391,6 +497,22 @@ void pkNewMap(PKVM* vm, int index) {
   pk_api.pkNewMap_ptr(vm, index);
 }
 
+bool pkMapGet(PKVM* vm, int index, int key, int value) {
+  return pk_api.pkMapGet_ptr(vm, index, key, value);
+}
+
+bool pkMapStackStringGet(PKVM* vm, int index, const char* key, int value) {
+  return pk_api.pkMapStackStringGet_ptr(vm, index, key, value);
+}
+
+bool pkMapSet(PKVM* vm, int index, int key, int value) {
+  return pk_api.pkMapSet_ptr(vm, index, key, value);
+}
+
+bool pkMapStackStringSet(PKVM* vm, int index, const char* key, int value) {
+  return pk_api.pkMapStackStringSet_ptr(vm, index, key, value);
+}
+
 bool pkListInsert(PKVM* vm, int list, int32_t index, int value) {
   return pk_api.pkListInsert_ptr(vm, list, index, value);
 }
@@ -409,6 +531,10 @@ bool pkCallFunction(PKVM* vm, int fn, int argc, int argv, int ret) {
 
 bool pkCallMethod(PKVM* vm, int instance, const char* method, int argc, int argv, int ret) {
   return pk_api.pkCallMethod_ptr(vm, instance, method, argc, argv, ret);
+}
+
+bool pkGetMethod(PKVM* vm, int instance, const char* method, int value) {
+  return pk_api.pkGetMethod_ptr(vm, instance, method, value);
 }
 
 bool pkGetAttribute(PKVM* vm, int instance, const char* name, int index) {
