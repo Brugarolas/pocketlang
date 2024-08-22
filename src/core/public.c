@@ -1195,8 +1195,29 @@ bool pkCallFunction(PKVM* vm, int fn, int argc, int argv, int ret) {
   return false;
 }
 
-bool pkCallMethod(PKVM* vm, int instance, const char* method,
-                            int argc, int argv, int ret) {
+bool pkCallMethodFromSlot(PKVM* vm, int instance, int method, int argc, int argv, int ret) {
+  CHECK_FIBER_EXISTS(vm);
+  VALIDATE_SLOT_INDEX(instance);
+  VALIDATE_SLOT_INDEX(method);
+  if (ret >= 0) VALIDATE_SLOT_INDEX(ret);
+  Var callable = SLOT(method);
+  if (VM_HAS_ERROR(vm)) return false;
+  if (IS_OBJ_TYPE(callable, OBJ_CLASS)) {
+    Var inst = _newInstance(vm, (Class*) AS_OBJ(callable), argc, vm->fiber->ret + argv);
+    if (ret >= 0) SET_SLOT(ret, inst);
+    return !VM_HAS_ERROR(vm);
+  } else if (IS_OBJ_TYPE(callable, OBJ_CLOSURE)) {
+    Var returnValue;
+    vmCallMethod(vm, SLOT(instance), (Closure*) AS_OBJ(callable), argc, vm->fiber->ret + argv, &returnValue);
+    if (ret >= 0) SET_SLOT(ret, returnValue);
+    return !VM_HAS_ERROR(vm);
+  } else {
+    VM_SET_ERROR(vm, stringFormat(vm, "invalid method in slot %d", method));
+    return false;
+  }
+}
+
+bool pkCallMethod(PKVM* vm, int instance, const char* method, int argc, int argv, int ret) {
   CHECK_FIBER_EXISTS(vm);
   CHECK_ARG_NULL(method);
   VALIDATE_SLOT_INDEX(instance);
@@ -1205,35 +1226,27 @@ bool pkCallMethod(PKVM* vm, int instance, const char* method,
     VALIDATE_SLOT_INDEX(argv + argc - 1);
   }
   if (ret >= 0) VALIDATE_SLOT_INDEX(ret);
-
   bool is_method = false;
   String* smethod = newString(vm, method);
   vmPushTempRef(vm, &smethod->_super); // smethod.
-  Var callable = getMethod(vm, SLOT(instance), smethod,
-                          &is_method);
+  Var callable = getMethod(vm, SLOT(instance), smethod, &is_method);
   vmPopTempRef(vm); // smethod.
-
   if (VM_HAS_ERROR(vm)) return false;
-
-  // Calls a class == construct.
   if (IS_OBJ_TYPE(callable, OBJ_CLASS)) {
     Var inst = _newInstance(vm, (Class*) AS_OBJ(callable), argc,
                             vm->fiber->ret + argv);
     if (ret >= 0) SET_SLOT(ret, inst);
     return !VM_HAS_ERROR(vm);
-  }
-
-  if (IS_OBJ_TYPE(callable, OBJ_CLOSURE)) {
+  } else if (IS_OBJ_TYPE(callable, OBJ_CLOSURE)) {
     Var retval;
     vmCallMethod(vm, SLOT(instance), (Closure*) AS_OBJ(callable), argc,
                  vm->fiber->ret + argv, &retval);
     if (ret >= 0) SET_SLOT(ret, retval);
     return !VM_HAS_ERROR(vm);
+  } else {
+    VM_SET_ERROR(vm, stringFormat(vm, "instance has no method '$'", method));
+    return false;
   }
-
-  VM_SET_ERROR(vm, stringFormat(vm, "Instance has no method named '$'.",
-                                method));
-  return false;
 }
 
 bool pkGetMethod(PKVM* vm, int instance, const char* method, int value) {

@@ -550,6 +550,8 @@ PK_PUBLIC uint32_t pkListLength(PKVM* vm, int list);
 // [ret] < 0 the return value will be discarded.
 PK_PUBLIC bool pkCallFunction(PKVM* vm, int fn, int argc, int argv, int ret);
 
+PK_PUBLIC bool pkCallMethodFromSlot(PKVM* vm, int instance, int method, int argc, int argv, int ret);
+
 // Calls a [method] on the [instance] with [argc] argument where [argv] is the
 // slot of the first argument. [ret] is the slot index of the return value. if
 // [ret] < 0 the return value will be discarded.
