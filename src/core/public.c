@@ -1165,10 +1165,10 @@ bool pkCallFunction(PKVM* vm, int fn, int argc, int argv, int ret) {
     ASSERT(!func->fn->is_method, OOPS);
 
     Var retval;
-    vmCallFunction(vm, func, argc,
+    PkResult result = vmCallFunction(vm, func, argc,
                    vm->fiber->ret + argv, &retval);
     if (ret >= 0) SET_SLOT(ret, retval);
-    return !VM_HAS_ERROR(vm);
+    return result == PK_RESULT_SUCCESS;
   }
 
   VM_SET_ERROR(vm, newString(vm, "Expected a Callable."));
