@@ -725,16 +725,16 @@ bool pkValidateSlotNumber(PKVM* vm, int slot, double* value) {
 bool pkValidateSlotInteger(PKVM* vm, int slot, int32_t* value) {
   CHECK_FIBER_EXISTS(vm);
   VALIDATE_SLOT_INDEX(slot);
-
-  double n;
-  if (!pkValidateSlotNumber(vm, slot, &n)) return false;
-
-  if (floor(n) != n) {
-    VM_SET_ERROR(vm, newString(vm, "Expected an integer got float."));
+  Var val = ARG(slot);
+  if (!IS_INT(val)) {
+    // if (IS_NUM(val) && floor(AS_NUM(val)) == AS_NUM(val)) {
+    //   if (value) *value = AS_INT((int32_t)AS_NUM(val));
+    //   return true;
+    // }
+    ERR_INVALID_SLOT_TYPE(slot, "Integer");
     return false;
   }
-
-  if (value) *value = (int32_t) n;
+  if (value) *value = AS_INT(val);
   return true;
 }
 

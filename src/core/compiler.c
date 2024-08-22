@@ -886,7 +886,7 @@ static void eatNumber(Compiler* compiler) {
 
       } while (true);
     }
-    value = VAR_NUM((double)bin);
+    value = VAR_INT((int32_t)bin);
 
   } else if (c == '0' &&
              ((peekChar(parser) == 'x') || (peekChar(parser) == 'X'))) {
@@ -920,7 +920,7 @@ static void eatNumber(Compiler* compiler) {
 
       } while (true);
 
-      value = VAR_NUM((double)hex);
+      value = VAR_INT((int32_t)hex);
     }
 
   } else { // Regular number literal.
@@ -929,17 +929,20 @@ static void eatNumber(Compiler* compiler) {
       eatChar(parser);
     }
 
+    bool isInteger = true;
     if (c != '.') { // Number starts with a decimal point.
       if (peekChar(parser) == '.' && utilIsDigit(peekNextChar(parser))) {
         matchChar(parser, '.');
         while (utilIsDigit(peekChar(parser))) {
           eatChar(parser);
         }
+        isInteger = false;
       }
     }
 
     // Parse if in scientific notation format (MeN == M * 10 ** N).
     if (matchChar(parser, 'e') || matchChar(parser, 'E')) {
+      isInteger = false;
 
       if (peekChar(parser) == '+' || peekChar(parser) == '-') {
         eatChar(parser);
@@ -948,14 +951,18 @@ static void eatNumber(Compiler* compiler) {
       if (!utilIsDigit(peekChar(parser))) {
         syntaxError(compiler, makeErrToken(parser), "Invalid number literal.");
         return;
-
       } else { // Eat the exponent.
         while (utilIsDigit(peekChar(parser))) eatChar(parser);
       }
     }
 
     errno = 0;
-    value = VAR_NUM(atof(parser->token_start));
+    if (isInteger) {
+      value = VAR_INT((int32_t)atoi(parser->token_start));
+    } else {
+      value = VAR_NUM((double)atof(parser->token_start));
+    }
+
     if (errno == ERANGE) {
       const char* start = parser->token_start;
       int len = (int)(parser->current_char - start);
