@@ -914,7 +914,7 @@ void pkSetSlotStringLength(PKVM* vm, int index,
 }
 
 void pkSetSlotStringFmt(PKVM* vm, int index, const char* fmt, ...) {
-
+  CHECK_FIBER_EXISTS(vm);
   va_list args;
   va_start(args, fmt);
   SET_SLOT(index, VAR_OBJ(newStringVaArgs(vm, fmt, args)));
@@ -926,6 +926,13 @@ void pkSetSlotHandle(PKVM* vm, int index, PkHandle* handle) {
   CHECK_ARG_NULL(handle);
   VALIDATE_SLOT_INDEX(index);
   SET_SLOT(index, handle->value);
+}
+
+void pkCopySlot(PKVM* vm, int from, int to) {
+  CHECK_FIBER_EXISTS(vm);
+  VALIDATE_SLOT_INDEX(from);
+  VALIDATE_SLOT_INDEX(to);
+  SET_SLOT(to, SLOT(from));
 }
 
 uint32_t pkGetSlotHash(PKVM* vm, int index) {

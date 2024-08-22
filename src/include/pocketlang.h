@@ -476,6 +476,9 @@ PK_PUBLIC void pkSetSlotStringFmt(PKVM* vm, int index, const char* fmt, ...);
 // it's released by yourself.
 PK_PUBLIC void pkSetSlotHandle(PKVM* vm, int index, PkHandle* handle);
 
+// Copy a value from one slot to another.
+PK_PUBLIC void pkCopySlot(PKVM* vm, int from, int to);
+
 // Returns the hash of the [index] slot value. The value at the [index] must be
 // hashable.
 PK_PUBLIC uint32_t pkGetSlotHash(PKVM* vm, int index);
