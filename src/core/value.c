@@ -1522,42 +1522,37 @@ struct OuterSequence {
 };
 typedef struct OuterSequence OuterSequence;
 
-static void _toStringInternal(PKVM* vm, const Var v, pkByteBuffer* buff,
-                              OuterSequence* outer, bool repr) {
+static void _toStringInternal(PKVM* vm, const Var v, pkByteBuffer* buff, OuterSequence* outer, bool repr) {
   ASSERT(outer == NULL || repr, OOPS);
-
   if (IS_NULL(v)) {
     pkByteBufferAddString(buff, vm, "null", 4);
     return;
-
   } else if (IS_BOOL(v)) {
     if (AS_BOOL(v)) pkByteBufferAddString(buff, vm, "true", 4);
     else pkByteBufferAddString(buff, vm, "false", 5);
     return;
-
+  } else if (IS_INT(v)) {
+    char int_buff[STR_INT_BUFF_SIZE] = {0};
+    int length = sprintf(int_buff, "%d", (int) AS_INT(v));
+    pkByteBufferAddString(buff, vm, int_buff, length);
+    return;
   } else if (IS_NUM(v)) {
     double value = AS_NUM(v);
-
     if (isnan(value)) {
       pkByteBufferAddString(buff, vm, "nan", 3);
-
     } else if (isinf(value)) {
       if (value > 0.0) {
         pkByteBufferAddString(buff, vm, "+inf", 4);
       } else {
         pkByteBufferAddString(buff, vm, "-inf", 4);
       }
-
     } else {
       char num_buff[STR_DBL_BUFF_SIZE];
       int length = sprintf(num_buff, DOUBLE_FMT, AS_NUM(v));
       pkByteBufferAddString(buff, vm, num_buff, length);
     }
-
     return;
-
   } else if (IS_OBJ(v)) {
-
     const Object* obj = AS_OBJ(v);
     switch (obj->type) {
 
@@ -1779,7 +1774,6 @@ static void _toStringInternal(PKVM* vm, const Var v, pkByteBuffer* buff,
         return;
       }
     }
-
   }
   UNREACHABLE();
   return;
