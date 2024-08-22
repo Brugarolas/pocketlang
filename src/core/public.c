@@ -282,6 +282,11 @@ bool pkModuleFindClass(PKVM* vm, PkHandle* module, const char* name, int index) 
   }
 }
 
+void pkModuleSetPath(PKVM* vm, PkHandle* module, const char* path) {
+  CHECK_HANDLE_TYPE(module, OBJ_MODULE);
+  ((Module*)AS_OBJ(module->value))->path = newString(vm, path);
+}
+
 PkHandle* pkNewClass(PKVM* vm, const char* name,
                      PkHandle* base_class, PkHandle* module,
                      pkNewInstanceFn new_fn,

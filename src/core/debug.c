@@ -192,25 +192,24 @@ static void _reportStackFrame(PKVM* vm, CallFrame* frame) {
   int line = fn->fn->oplines.data[instruction_index];
 
   if (fn->owner->path == NULL) {
-
-    writefn(vm, "  [at:");
+    writefn(vm, "  in function ");
+    writefn(vm, fn->name);
+    writefn(vm, "() at line ");
     char buff[STR_INT_BUFF_SIZE];
     sprintf(buff, "%2d", line);
     writefn(vm, buff);
-    writefn(vm, "] ");
-    writefn(vm, fn->name);
-    writefn(vm, "()\n");
+    writefn(vm, "\n");
 
   } else {
-    writefn(vm, "  ");
-    writefn(vm, fn->name);
-    writefn(vm, "() [");
+    writefn(vm, "  in '");
     writefn(vm, fn->owner->path->data);
-    writefn(vm, ":");
+    writefn(vm, "' ");
+    writefn(vm, fn->name);
+    writefn(vm, "() at line ");
     char buff[STR_INT_BUFF_SIZE];
     sprintf(buff, "%d", line);
     writefn(vm, buff);
-    writefn(vm, "]\n");
+    writefn(vm, "\n");
   }
 }
 

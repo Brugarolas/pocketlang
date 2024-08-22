@@ -300,6 +300,8 @@ PK_PUBLIC void pkModuleAddFunction(PKVM* vm, PkHandle* module,
 
 PK_PUBLIC bool pkModuleFindClass(PKVM* vm, PkHandle* module, const char* name, int index);
 
+PK_PUBLIC void pkModuleSetPath(PKVM* vm, PkHandle* module, const char* path);
+
 // Create a new class on the [module] with the [name] and return it.
 // If the [base_class] is NULL by default it'll set to "Object" class.
 // [docstring] is optional and could be omitted with NULL.
