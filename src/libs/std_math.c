@@ -207,7 +207,7 @@ DEF(stdMathRand,
   // RAND_MAX is implementation dependent but is guaranteed to be at least
   // 0x7fff on any standard library implementation.
   // https://www.cplusplus.com/reference/cstdlib/RAND_MAX/
-  pkSetSlotNumber(vm, 0, rand() % 0x7fff);
+  pkSetSlotNumber(vm, 0, (double)(rand() % RAND_MAX) / (double)(RAND_MAX));
 }
 
 /*****************************************************************************/
