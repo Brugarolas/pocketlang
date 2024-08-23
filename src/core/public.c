@@ -8,14 +8,12 @@
 
 #include <math.h>
 
-#ifndef PK_AMALGAMATED
 #include <pocketlang.h>
 #include "core.h"
 #include "compiler.h"
 #include "utils.h"
 #include "value.h"
 #include "vm.h"
-#endif
 
 // FIXME: Document this or Find a better way.
 //

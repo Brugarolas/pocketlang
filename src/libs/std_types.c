@@ -6,11 +6,9 @@
 
 #include <math.h>
 
-#ifndef PK_AMALGAMATED
 #include "libs.h"
 #include "../core/value.h"
 #include "../core/vm.h"
-#endif
 
 DEF(_typesHashable,
   "types.hashable(value:Var) -> Bool",

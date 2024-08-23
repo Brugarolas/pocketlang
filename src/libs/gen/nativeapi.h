@@ -4,9 +4,7 @@
  *  Distributed Under The MIT License
  */
 
-#ifndef PK_AMALGAMATED
 #include <pocketlang.h>
-#endif
 
 
 // !! THIS FILE IS GENERATED DO NOT EDIT !!

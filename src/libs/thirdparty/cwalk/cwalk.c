@@ -1,13 +1,10 @@
 #include <assert.h>
 #include <ctype.h>
-// -- pocketlang start --
-#ifndef PK_AMALGAMATED
-#include "cwalk.h" //<< AMALG_IGNORE >>
-#endif
-// -- pocketlang end --
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+
+#include "cwalk.h"
 
 /**
  * We try to default to a different path style depending on the operating

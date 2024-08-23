@@ -8,8 +8,7 @@
 // any dependencies, you can just drag and drop this file in your project if
 // you want to use these macros.
 
-#ifndef PK_COMMON_H
-#define PK_COMMON_H
+#pragma once
 
 #ifndef __has_builtin
   #define __has_builtin(x) 0
@@ -122,5 +121,3 @@
 #define DEF(fn, signature, docstring)                            \
   static const char* DOCSTRING(fn) = signature "\n\n" docstring; \
   static void fn(PKVM* vm)
-
-#endif //PK_COMMON_H

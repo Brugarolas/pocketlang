@@ -6,13 +6,11 @@
 
 #include <math.h>
 
-#ifndef PK_AMALGAMATED
 #include "libs.h"
 #include "../core/vm.h"
-#endif
 
-#include "thirdparty/cJSON/cJSON.h" //<< AMALG_INLINE >>
-#include "thirdparty/cJSON/cJSON.c" //<< AMALG_INLINE >>
+#include "thirdparty/cJSON/cJSON.h"
+#include "thirdparty/cJSON/cJSON.c"
 
 // TODO:
 // Convert a cJSON object into pocket variable. Note that the depth shouldn't

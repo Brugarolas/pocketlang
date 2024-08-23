@@ -6,9 +6,7 @@
 
 #include <time.h>
 
-#ifndef PK_AMALGAMATED
 #include "libs.h"
-#endif
 
 #ifdef _WIN32
   #include <windows.h>

@@ -6,11 +6,9 @@
 
 #include <math.h>
 
-#ifndef PK_AMALGAMATED
 #include "vm.h"
 #include "utils.h"
 #include "debug.h"
-#endif
 
 PkHandle* vmNewHandle(PKVM* vm, Var value) {
   PkHandle* handle = (PkHandle*)ALLOCATE(vm, PkHandle);

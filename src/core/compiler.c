@@ -4,14 +4,12 @@
  *  Distributed Under The MIT License
  */
 
-#ifndef PK_AMALGAMATED
 #include "compiler.h"
 #include "core.h"
 #include "buffers.h"
 #include "utils.h"
 #include "vm.h"
 #include "debug.h"
-#endif
 
 // The maximum number of locals or global (if compiling top level module)
 // to lookup from the compiling context. Also it's limited by it's opcode
@@ -504,7 +502,7 @@ typedef struct {
 
 static OpInfo opcode_info[] = {
   #define OPCODE(name, params, stack) { params, stack },
-  #include "opcodes.h"  //<< AMALG_INLINE >>
+  #include "opcodes.h"
   #undef OPCODE
 };
 

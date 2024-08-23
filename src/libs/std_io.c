@@ -6,10 +6,8 @@
 
 #include <math.h>
 
-#ifndef PK_AMALGAMATED
 #include "libs.h"
 #include "../core/value.h"
-#endif
 
 DEF(_ioWrite,
   "io.write(stream:Var, bytes:String) -> Null",

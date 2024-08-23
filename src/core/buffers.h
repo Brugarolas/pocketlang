@@ -4,12 +4,9 @@
  *  Distributed Under The MIT License
  */
 
-#ifndef PK_BUFFERS_TEMPLATE_H
-#define PK_BUFFERS_TEMPLATE_H
+#pragma once
 
-#ifndef PK_AMALGAMATED
 #include "internal.h"
-#endif
 
 // The macro 'DECLARE_BUFFER()' emulate the C++ template to declare and define
 // different types of buffer objects.
@@ -101,5 +98,3 @@
            other->count * sizeof(m_type));                                    \
     self->count += other->count;                                              \
   }
-
-#endif // PK_BUFFERS_TEMPLATE_H

@@ -5,13 +5,10 @@
  */
 
 #include <math.h>
-
-#ifndef PK_AMALGAMATED
-#include "libs.h"
-#endif
-
 #include <stdlib.h>
 #include <sys/stat.h>
+
+#include "libs.h"
 
 #if defined(__EMSCRIPTEN__)
   #define _PKOS_WEB_
@@ -67,7 +64,7 @@
 #ifndef PK_NO_DL
 
 #define PK_DL_IMPLEMENT
-#include "gen/nativeapi.h"  //<< AMALG_INLINE >>
+#include "gen/nativeapi.h"
 
 #ifdef _PKOS_WIN_
 void* osLoadDL(PKVM* vm, const char* path) {

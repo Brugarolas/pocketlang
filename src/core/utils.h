@@ -4,8 +4,7 @@
  *  Distributed Under The MIT License
  */
 
-#ifndef PK_UTILS_H
-#define PK_UTILS_H
+#pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -127,5 +126,3 @@ int utf8_encodeValue(int value, uint8_t* bytes);
 // returns the number of bytes the value decoded, if invalid write -1 to the
 // value.
 int utf8_decodeBytes(uint8_t* bytes, int* value);
-
-#endif // PK_UTILS_H

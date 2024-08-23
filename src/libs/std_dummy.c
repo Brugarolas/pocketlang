@@ -4,9 +4,7 @@
  *  Distributed Under The MIT License
  */
 
-#ifndef PK_AMALGAMATED
 #include "libs.h"
-#endif
 
 // A DUMMY MODULE TO TEST NATIVE INTERFACE AND CLASSES.
 

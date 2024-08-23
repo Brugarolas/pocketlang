@@ -141,7 +141,7 @@ def generate():
 
   ## Generate native api source.
   with open(TARGET_IMP, 'w') as fp:
-    fp.write(HEADER % '\n#ifndef PK_AMALGAMATED\n#include <pocketlang.h>\n#endif\n\n')
+    fp.write(HEADER % '\n#include <pocketlang.h>\n\n')
 
     fp.write(fn_typedefs(api_functions))
     fp.write(api_typedef(api_functions))

@@ -4,13 +4,10 @@
  *  Distributed Under The MIT License
  */
 
-#ifndef PK_VALUE_H
-#define PK_VALUE_H
+#pragma once
 
-#ifndef PK_AMALGAMATED
 #include "buffers.h"
 #include "internal.h"
-#endif
 
 /**
  * A simple dynamic type system library for small dynamic typed languages using
@@ -815,5 +812,3 @@ String* toRepr(PKVM * vm, const Var value);
 
 // Returns the truthy value of the var.
 bool toBool(Var v);
-
-#endif // PK_VAR_H

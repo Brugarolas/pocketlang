@@ -7,11 +7,9 @@
 #include <math.h>
 #include <ctype.h>
 
-#ifndef PK_AMALGAMATED
 #include "value.h"
 #include "utils.h"
 #include "vm.h"
-#endif
 
 // The maximum percentage of the map entries that can be filled before the map
 // is grown. A lower percentage reduce collision which makes looks up faster
@@ -1826,6 +1824,5 @@ bool toBool(Var v) {
   return false;
 }
 
-// Undefining for amalgamation to let othre libraries also define _MIN, _MAX.
 #undef _MAX
 #undef _MIN

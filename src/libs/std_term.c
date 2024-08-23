@@ -4,17 +4,15 @@
  *  Distributed Under The MIT License
  */
 
-#ifndef PK_AMALGAMATED
 #include "libs.h"
-#include "gen/ext_term.pk.h"  //<< AMALG_INLINE >>
-#endif
+#include "gen/ext_term.pk.h"
 
 #ifdef _WIN32
 #include <fcntl.h>
 #endif
 
 #define TERM_IMPLEMENT
-#include "thirdparty/term/term.h"  //<< AMALG_INLINE >>
+#include "thirdparty/term/term.h"
 #undef TERM_IMPLEMENT
 
 // A reference to the event class, to check is instance of.

@@ -4,12 +4,9 @@
  *  Distributed Under The MIT License
  */
 
-#ifndef LIBS_H
-#define LIBS_H
+#pragma once
 
-#ifndef PK_AMALGAMATED
 #include <pocketlang.h>
-#endif
 
 #include <errno.h>
 #include <stdio.h>
@@ -47,9 +44,7 @@
 // and dropped into another embedded application where is cannot find the
 // relative include.
 //
-#ifndef PK_AMALGAMATED
 #include "../core/common.h"
-#endif // PK_AMALGAMATED
 
 #include <errno.h>
 
@@ -98,5 +93,3 @@ void osUnloadDL(PKVM* vm, void* handle);
 // Write the executable's path to the buffer and return true, if it failed
 // it'll return false.
 bool osGetExeFilePath(char* buff, int size);
-
-#endif // LIBS_H

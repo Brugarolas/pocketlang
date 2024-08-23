@@ -4,13 +4,10 @@
  *  Distributed Under The MIT License
  */
 
-#ifndef PK_VM_H
-#define PK_VM_H
+#pragma once
 
-#ifndef PK_AMALGAMATED
 #include "compiler.h"
 #include "core.h"
-#endif
 
 // The maximum number of temporary object reference to protect them from being
 // garbage collected.
@@ -256,5 +253,3 @@ Var vmImportModule(PKVM* vm, String* from, String* path);
 void vmUnloadDlHandle(PKVM* vm, void* handle);
 
 #endif
-
-#endif // PK_VM_H

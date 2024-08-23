@@ -4,13 +4,10 @@
  *  Distributed Under The MIT License
  */
 
-#ifndef PK_CORE_H
-#define PK_CORE_H
+#pragma once
 
-#ifndef PK_AMALGAMATED
 #include "internal.h"
 #include "value.h"
-#endif
 
 // Literal strings used in various places in pocketlang. For now these are
 // defined as macros so that it'll be easier in the future to refactor or
@@ -148,5 +145,3 @@ Var varGetSubscript(PKVM* vm, Var on, Var key);
 
 // Set subscript [value] with the [key] (ie. on[key] = value).
 void varsetSubscript(PKVM* vm, Var on, Var key, Var value);
-
-#endif // PK_CORE_H

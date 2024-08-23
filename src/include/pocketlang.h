@@ -4,8 +4,7 @@
  *  Distributed Under The MIT License
  */
 
-#ifndef POCKETLANG_H
-#define POCKETLANG_H
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -584,5 +583,3 @@ PK_PUBLIC bool pkImportModule(PKVM* vm, const char* path, int index);
 #ifdef __cplusplus
 } // extern "C"
 #endif
-
-#endif // POCKETLANG_H
