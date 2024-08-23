@@ -750,6 +750,15 @@ bool pkValidateSlotInteger(PKVM* vm, int slot, int32_t* value) {
   return false;
 }
 
+bool pkValidateSlotNumberInteger(PKVM* vm, int slot, int32_t* value) {
+  double v = 0.0;
+  if (pkValidateSlotNumber(vm, slot, &v)) {
+    *value = floor(v);
+    return true;
+  }
+  return false;
+}
+
 bool pkValidateSlotString(PKVM* vm, int slot, const char** value,
                                     uint32_t* length) {
   CHECK_FIBER_EXISTS(vm);

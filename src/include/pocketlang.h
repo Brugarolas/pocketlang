@@ -387,6 +387,10 @@ PK_PUBLIC bool pkValidateSlotNumber(PKVM* vm, int slot, double* value);
 // and if not set a runtime error.
 PK_PUBLIC bool pkValidateSlotInteger(PKVM* vm, int slot, int32_t* value);
 
+// Check if the argument at [slot] is a number and retrieve it as an integer,
+// flooring away any decimal part.
+PK_PUBLIC bool pkValidateSlotNumberInteger(PKVM* vm, int slot, int32_t* value);
+
 // Helper function to check if the argument at the [slot] slot is String and
 // if not set a runtime error.
 PK_PUBLIC bool pkValidateSlotString(PKVM* vm, int slot,
