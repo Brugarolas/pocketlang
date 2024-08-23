@@ -373,7 +373,7 @@ void pkReleaseHandle(PKVM* vm, PkHandle* handle) {
 }
 
 void* pkGetHandleNativeInstance(PKVM* vm, PkHandle* handle) {
-  CHECK_HANDLE_TYPE(module, OBJ_INSTANCE);
+  CHECK_HANDLE_TYPE(handle, OBJ_INSTANCE);
   Instance* instance = (Instance*)AS_OBJ(handle->value);
   if (instance->native != NULL) {
     return instance->native;
