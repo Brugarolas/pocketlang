@@ -372,6 +372,16 @@ void pkReleaseHandle(PKVM* vm, PkHandle* handle) {
   DEALLOCATE(vm, handle, PkHandle);
 }
 
+void* pkGetHandleNativeInstance(PKVM* vm, PkHandle* handle) {
+  CHECK_HANDLE_TYPE(module, OBJ_INSTANCE);
+  Instance* instance = (Instance*)AS_OBJ(handle->value);
+  if (instance->native != NULL) {
+    return instance->native;
+  } else {
+    return NULL;
+  }
+}
+
 PkResult pkRunModule(PKVM* vm, PkHandle* module) {
   CHECK_HANDLE_TYPE(module, OBJ_MODULE);
 

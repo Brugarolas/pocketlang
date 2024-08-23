@@ -281,6 +281,8 @@ PK_PUBLIC void* pkRealloc(PKVM* vm, void* ptr, size_t size);
 // this for every handles before freeing the VM.
 PK_PUBLIC void pkReleaseHandle(PKVM* vm, PkHandle* handle);
 
+PK_PUBLIC void* pkGetHandleNativeInstance(PKVM* vm, PkHandle* handle);
+
 // Add a new module named [name] to the [vm]. Note that the module shouldn't
 // already existed, otherwise an assertion will fail to indicate that.
 PK_PUBLIC PkHandle* pkNewModule(PKVM* vm, const char* name);
