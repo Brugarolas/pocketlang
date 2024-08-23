@@ -1531,11 +1531,6 @@ static void _toStringInternal(PKVM* vm, const Var v, pkByteBuffer* buff, OuterSe
     if (AS_BOOL(v)) pkByteBufferAddString(buff, vm, "true", 4);
     else pkByteBufferAddString(buff, vm, "false", 5);
     return;
-  } else if (IS_INT(v)) {
-    char int_buff[STR_INT_BUFF_SIZE] = {0};
-    int length = sprintf(int_buff, "%d", (int) AS_INT(v));
-    pkByteBufferAddString(buff, vm, int_buff, length);
-    return;
   } else if (IS_NUM(v)) {
     double value = AS_NUM(v);
     if (isnan(value)) {

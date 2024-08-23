@@ -886,7 +886,7 @@ static void eatNumber(Compiler* compiler) {
 
       } while (true);
     }
-    value = VAR_INT((int32_t)bin);
+    value = VAR_NUM((double)bin);
 
   } else if (c == '0' &&
              ((peekChar(parser) == 'x') || (peekChar(parser) == 'X'))) {
@@ -920,7 +920,7 @@ static void eatNumber(Compiler* compiler) {
 
       } while (true);
 
-      value = VAR_INT((int32_t)hex);
+      value = VAR_NUM((double)hex);
     }
 
   } else { // Regular number literal.
@@ -929,25 +929,20 @@ static void eatNumber(Compiler* compiler) {
       eatChar(parser);
     }
 
-    bool isInteger = true;
     if (c != '.') { // Number starts with a decimal point.
       if (peekChar(parser) == '.' && utilIsDigit(peekNextChar(parser))) {
         matchChar(parser, '.');
         while (utilIsDigit(peekChar(parser))) {
           eatChar(parser);
         }
-        isInteger = false;
       }
     }
 
     // Parse if in scientific notation format (MeN == M * 10 ** N).
     if (matchChar(parser, 'e') || matchChar(parser, 'E')) {
-      isInteger = false;
-
       if (peekChar(parser) == '+' || peekChar(parser) == '-') {
         eatChar(parser);
       }
-
       if (!utilIsDigit(peekChar(parser))) {
         syntaxError(compiler, makeErrToken(parser), "Invalid number literal.");
         return;
@@ -955,23 +950,15 @@ static void eatNumber(Compiler* compiler) {
         while (utilIsDigit(peekChar(parser))) eatChar(parser);
       }
     }
-
     errno = 0;
-    if (isInteger) {
-      value = VAR_INT((int32_t)atoi(parser->token_start));
-    } else {
-      value = VAR_NUM((double)atof(parser->token_start));
-    }
-
+    value = VAR_NUM((double)atof(parser->token_start));
     if (errno == ERANGE) {
       const char* start = parser->token_start;
       int len = (int)(parser->current_char - start);
-      semanticError(compiler, makeErrToken(parser),
-                    "Number literal is too large (%.*s).", len, start);
-      value = VAR_NUM(0);
+      semanticError(compiler, makeErrToken(parser), "Number literal is too large (%.*s).", len, start);
+      value = VAR_NUM(0.0);
     }
   }
-
   setNextValueToken(parser, TK_NUMBER, value);
 #undef IS_BIN_CHAR
 }

@@ -736,16 +736,18 @@ bool pkValidateSlotInteger(PKVM* vm, int slot, int32_t* value) {
   CHECK_FIBER_EXISTS(vm);
   VALIDATE_SLOT_INDEX(slot);
   Var val = ARG(slot);
-  if (!IS_INT(val)) {
-    // if (IS_NUM(val) && floor(AS_NUM(val)) == AS_NUM(val)) {
-    //   if (value) *value = AS_INT((int32_t)AS_NUM(val));
-    //   return true;
-    // }
-    ERR_INVALID_SLOT_TYPE(slot, "Integer");
-    return false;
+
+  if (IS_NUM(val)) {
+    double n = AS_NUM(val);
+    double f = floor(n);
+    if (n == f) {
+      if (value) *value = (int32_t) f;
+      return true;
+    }
   }
-  if (value) *value = AS_INT(val);
-  return true;
+
+  ERR_INVALID_SLOT_TYPE(slot, "Integer");
+  return false;
 }
 
 bool pkValidateSlotString(PKVM* vm, int slot, const char** value,
@@ -913,7 +915,7 @@ void pkSetSlotNumber(PKVM* vm, int index, double value) {
 void pkSetSlotInteger(PKVM* vm, int index, int32_t value) {
   CHECK_FIBER_EXISTS(vm);
   VALIDATE_SLOT_INDEX(index);
-  SET_SLOT(index, VAR_INT(value));
+  SET_SLOT(index, VAR_NUM(value));
 }
 
 void pkSetSlotString(PKVM* vm, int index, const char* value) {

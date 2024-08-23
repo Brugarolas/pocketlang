@@ -94,10 +94,8 @@
 #define _MASK_TYPE  ((uint64_t)0x0003000000000000)
 #define _MASK_CONST ((uint64_t)0x0004000000000000)
 
-#define _MASK_INTEGER (_MASK_QNAN | (uint64_t)0x0002000000000000)
 #define _MASK_OBJECT  (_MASK_QNAN | (uint64_t)0x8000000000000000)
 
-#define _PAYLOAD_INTEGER ((uint64_t)0x00000000ffffffff)
 #define _PAYLOAD_OBJECT  ((uint64_t)0x0000ffffffffffff)
 
 // Primitive types.
@@ -109,8 +107,7 @@
 
 // Encode types.
 #define VAR_BOOL(value) ((value)? VAR_TRUE : VAR_FALSE)
-#define VAR_INT(value)  (_MASK_INTEGER | (uint32_t)(int32_t)(value))
-#define VAR_NUM(value)  (doubleToVar(value))
+#define VAR_NUM(value)  (doubleToVar((double)value))
 #define VAR_OBJ(value) /* [value] is an instance of Object */ \
   ((Var)(_MASK_OBJECT | (uint64_t)(uintptr_t)(&value->_super)))
 
@@ -125,7 +122,6 @@
 #define IS_FALSE(value) ((value) == VAR_FALSE)
 #define IS_TRUE(value)  ((value) == VAR_TRUE)
 #define IS_BOOL(value)  (IS_TRUE(value) || IS_FALSE(value))
-#define IS_INT(value)   ((value & _MASK_INTEGER) == _MASK_INTEGER)
 #define IS_NUM(value)   ((value & _MASK_QNAN) != _MASK_QNAN)
 #define IS_OBJ(value)   ((value & _MASK_OBJECT) == _MASK_OBJECT)
 
@@ -146,7 +142,6 @@
 
 // Decode types.
 #define AS_BOOL(value) ((value) == VAR_TRUE)
-#define AS_INT(value)  ((int32_t)((value) & _PAYLOAD_INTEGER))
 #define AS_NUM(value)  (varToDouble(value))
 #define AS_OBJ(value)  ((Object*)(value & _PAYLOAD_OBJECT))
 
@@ -165,7 +160,6 @@ typedef enum {
   VAR_UNDEFINED, //< Internal type for exceptions.
   VAR_NULL,      //< Null pointer type.
   VAR_BOOL,      //< Yin and yang of software.
-  VAR_INT,       //< Only 32bit integers (for consistence with Nan-Tagging).
   VAR_FLOAT,     //< Floats are stored as (64bit) double.
 
   VAR_OBJECT,    //< Base type for all \ref var_Object types.
@@ -175,7 +169,6 @@ struct Var {
   VarType type;
   union {
     bool _bool;
-    int _int;
     double _float;
     Object* _obj;
   };
