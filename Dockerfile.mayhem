@@ -1,0 +1,11 @@
+FROM --platform=linux/amd64 ubuntu:20.04 as builder
+
+RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y make gcc
+
+COPY . /repo
+WORKDIR /repo
+RUN make -j8
+
+FROM ubuntu:20.04 as package
+COPY --from=builder /repo/build/Debug/bin/pocket /repo/build/Debug/bin/pocket
