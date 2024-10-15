@@ -471,6 +471,8 @@ typedef enum {
 struct Fiber {
   Object _super;
 
+  bool trying;
+
   FiberState state;
 
   // The root closure of the fiber.
@@ -514,8 +516,18 @@ struct Fiber {
   Fiber *caller, *native;
 
   // Runtime error initially NULL, heap allocated.
-  String* error;
+  Var error;
 };
+
+typedef enum {
+  METHOD_INIT,
+  METHOD_STR,
+  METHOD_REPR,
+  METHOD_GETTER,
+  METHOD_SETTER,
+  METHOD_CALL,
+  MAX_MAGIC_METHODS,
+} MagicMethod;
 
 struct Class {
   Object _super;
@@ -538,7 +550,8 @@ struct Class {
   // builtin type's class.
   PkVarType class_of;
 
-  Closure* ctor; //< The constructor function.
+  // Magic methods, ctor/getter/setter etc.
+  Closure* magic_methods[MAX_MAGIC_METHODS];
 
   // A buffer of methods of the class.
   pkClosureBuffer methods;
@@ -550,7 +563,6 @@ struct Class {
   // For script/ builtin types it'll be NULL.
   pkNewInstanceFn new_fn;
   pkDeleteInstanceFn delete_fn;
-
 };
 
 typedef struct {
@@ -680,8 +692,8 @@ String* stringStrip(PKVM* vm, String* self);
 String* stringReplace(PKVM* vm, String* self,
                       String* old, String* new_, int count);
 
-// Split the string into a list of string separated by [sep]. String [sep] must
-// not be of length 0 otherwise an assertion will fail.
+// Split the string into a list of string separated by [sep].
+// If [sep] == "", split string into characters.
 List* stringSplit(PKVM* vm, String* self, String* sep);
 
 // Creates a new string from the arguments. This is intended for internal
@@ -710,6 +722,9 @@ String* stringJoin(PKVM* vm, String* str1, String* str2);
 // elements.
 void listInsert(PKVM* vm, List* self, uint32_t index, Var value);
 
+// Shrink the size if it's too much excess.
+void listShrink(PKVM* vm, List* self);
+
 // Remove and return element at [index].
 Var listRemoveAt(PKVM* vm, List* self, uint32_t index);
 
@@ -732,6 +747,9 @@ void mapClear(PKVM* vm, Map* self);
 // Remove the [key] from the map. If the key exists return it's value
 // otherwise return VAR_UNDEFINED.
 Var mapRemoveKey(PKVM* vm, Map* self, Var key);
+
+// Duplicate a map.
+Map* mapDup(PKVM* vm, Map* self);
 
 // Returns true if the fiber has error, and if it has any the fiber cannot be
 // resumed anymore.

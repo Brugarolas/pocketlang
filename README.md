@@ -3,9 +3,30 @@
 <img src="https://user-images.githubusercontent.com/41085900/161365989-f3fd47bb-7ea7-4114-8e9b-2224e1193079.png" width="500" >
 </p>
 
+------------
+This fork contains the enhanced version of pocketlang. The main goal of this
+fork is to achieve a script that can integrate deeply into
+[nim language](https://github.com/khchen/nimpk).
+
+Enhancements compare to original version:
+ * String format via modulo operator.
+ * Optional parameters, and arguments with default values.
+ * Command like function call.
+ * Conditional expression.
+ * Magic methods: _getter, _setter, _call, _dict, etc.
+ * Iterator protocol.
+ * RegExp, Timsort, PRNG, etc via new built-in module.
+ * Error handling.
+ * Metaprogramming.
+ * And more...
+
+Demonstration: https://github.com/khchen/pocketlang/blob/devel/tests/devel/demo.pk
+
+------------
+
 **Pocketlang** is a lightweight (~3000 semicolons) and [fast](https://github.com/ThakeeNathees/pocketlang#performance)
 object oriented, embeddable scripting language written in C. It has a ruby
-flavoured python syntax, that can be learned [within 15 minutes](https://thakeenathees.github.io/pocketlang/docs/v0.1.0/Reference/Cheat-Sheet.html).
+flavoured python syntax, that can be learned [within 15 minutes](https://thakeenathees.github.io/pocketlang/#/).
 Including the compiler, bytecode VM and runtime, it's a standalone executable
 with zero external dependencies just as it's self descriptive name. The pocketlang
 VM can be embedded in another hosting program very easily.
