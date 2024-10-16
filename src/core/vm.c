@@ -47,7 +47,11 @@ void* vmRealloc(PKVM* vm, void* memory, size_t old_size, size_t new_size) {
     vm->collecting_garbage = false;
   }
 
-  return vm->config.realloc_fn(memory, new_size, vm->config.user_data);
+  void* new_ptr = vm->config.realloc_fn(memory, new_size, vm->config.user_data);
+  if (new_ptr != NULL && old_size < new_size) {
+    memset(new_ptr + old_size, 0, new_size - old_size);
+  }
+  return new_ptr;
 }
 
 void vmPushTempRef(PKVM* vm, Object* obj) {
@@ -118,6 +122,10 @@ void vmCollectGarbage(PKVM* vm) {
     markObject(vm, &vm->fiber->_super);
   }
 
+  if (vm->perpetrator != NULL) {
+    markObject(vm, &vm->perpetrator->_super);
+  }
+
   // Reset VM's bytes_allocated value and count it again so that we don't
   // required to know the size of each object that'll be freeing.
   vm->bytes_allocated = 0;
@@ -178,11 +186,14 @@ bool vmPrepareFiber(PKVM* vm, Fiber* fiber, int argc, Var* argv) {
   ASSERT(fiber->closure->fn->arity >= -1,
          OOPS " (Forget to initialize arity.)");
 
-  if ((fiber->closure->fn->arity != -1) && argc != fiber->closure->fn->arity) {
-    char buff[STR_INT_BUFF_SIZE];
-    sprintf(buff, "%d", fiber->closure->fn->arity);
-    _ERR_FAIL(stringFormat(vm, "Expected exactly $ argument(s) for "
-                           "function $.", buff, fiber->closure->fn->name));
+  // Like lua: Extra arguments are thrown away; extra parameters get null.
+  int nulls = 0;
+  if (fiber->closure->fn->arity != -1) {
+    if (argc > fiber->closure->fn->arity) {
+      argc = fiber->closure->fn->arity;
+    } else {
+      nulls = fiber->closure->fn->arity - argc;
+    }
   }
 
   if (fiber->state != FIBER_NEW) {
@@ -202,8 +213,8 @@ bool vmPrepareFiber(PKVM* vm, Fiber* fiber, int argc, Var* argv) {
   ASSERT(fiber->stack != NULL && fiber->sp == fiber->stack + 1, OOPS);
   ASSERT(fiber->ret == fiber->stack, OOPS);
 
-  vmEnsureStackSize(vm, fiber, (int) (fiber->sp - fiber->stack) + argc);
-  ASSERT((fiber->stack + fiber->stack_size) - fiber->sp >= argc, OOPS);
+  vmEnsureStackSize(vm, fiber, (int)(fiber->sp - fiber->stack) + argc + nulls);
+  ASSERT((fiber->stack + fiber->stack_size) - fiber->sp >= argc + nulls, OOPS);
 
   // Pass the function arguments.
 
@@ -212,7 +223,10 @@ bool vmPrepareFiber(PKVM* vm, Fiber* fiber, int argc, Var* argv) {
   for (int i = 0; i < argc; i++) {
     fiber->ret[1 + i] = *(argv + i); // +1: ret[0] is return value.
   }
-  fiber->sp += argc; // Parameters.
+  for (int i = 0; i < nulls; i++) {
+    fiber->ret[1 + i + argc] = VAR_NULL;
+  }
+  fiber->sp += argc + nulls; // Parameters.
 
   // Native functions doesn't own a stack frame so, we're done here.
   if (fiber->closure->fn->is_native) return true;
@@ -481,6 +495,13 @@ Var vmImportModule(PKVM* vm, String* from, String* path) {
 
   if (_resolved == NULL) { // Can't resolve a relative module.
     pkRealloc(vm, _resolved, 0);
+
+    // try to import dll module anyway (if the dll in system path,etc.)
+    Module* module = _importDL(vm, path, path);
+    if (module != NULL) {
+      return VAR_OBJ(module);
+    }
+
     VM_SET_ERROR(vm, stringFormat(vm, "Cannot import module '@'", path));
     return VAR_NULL;
   }
@@ -757,15 +778,43 @@ static void closeUpvalues(Fiber* fiber, Var* top) {
 static void vmReportError(PKVM* vm) {
   ASSERT(VM_HAS_ERROR(vm), "runtimeError() should be called after an error.");
 
-  // TODO: pass the error to the caller of the fiber.
-
   if (vm->config.stderr_write == NULL) return;
-  reportRuntimeError(vm, vm->fiber);
+
+  // Store the error fiber so that we can report it later.
+  if (vm->perpetrator == NULL) {
+    vm->perpetrator = vm->fiber;
+  }
+
+  // For an error that occures during vmCallMethod(),
+  // Don't report it but pass the error back to the native fiber.
+  if (vm->fiber->native != NULL) {
+    vm->fiber->native->error = vm->fiber->error;
+  } else {
+    // If there is no native fiber, OK, we report it.
+    // The error may be not in current fiber/stackframe,
+    // so we report the error starting from stored perpetrator.
+    bool is_first = true;
+    Fiber* fb = vm->perpetrator;
+    while (fb != NULL && fb != vm->fiber) {
+      reportRuntimeError(vm, fb, &is_first);
+      fb = fb->native;
+    }
+    reportRuntimeError(vm, vm->fiber, &is_first);
+  }
 }
 
 /******************************************************************************
  * RUNTIME                                                                    *
  *****************************************************************************/
+
+// Check if current fiber is running in "trying" mode.
+bool isTrying(Fiber* fiber) {
+  while (fiber != NULL) {
+    if (fiber->trying) return true;
+    fiber = fiber->caller;
+  }
+  return false;
+}
 
 PkResult vmRunFiber(PKVM* vm, Fiber* fiber_) {
 
@@ -812,29 +861,45 @@ PkResult vmRunFiber(PKVM* vm, Fiber* fiber_) {
     ASSERT(caller == NULL || caller->state == FIBER_RUNNING, OOPS); \
     fiber->state = FIBER_DONE;                                      \
     fiber->caller = NULL;                                           \
+    if (fiber->trying) vm->perpetrator = NULL;                      \
+    else if (caller) {                                              \
+      caller->error = fiber->error;                                 \
+    }                                                               \
     fiber = caller;                                                 \
     vm->fiber = fiber;                                              \
   } while (false)
 
 // Check if any runtime error exists and if so returns RESULT_RUNTIME_ERROR.
-#define CHECK_ERROR()                 \
-  do {                                \
-    if (VM_HAS_ERROR(vm)) {           \
-      UPDATE_FRAME();                 \
-      vmReportError(vm);              \
-      FIBER_SWITCH_BACK();            \
-      return PK_RESULT_RUNTIME_ERROR; \
-    }                                 \
+#define CHECK_ERROR()                     \
+  do {                                    \
+    if (VM_HAS_ERROR(vm)) {               \
+      UPDATE_FRAME();                     \
+      if (isTrying(fiber)) {              \
+        FIBER_SWITCH_BACK();              \
+        LOAD_FRAME();                     \
+        DISPATCH();                       \
+      } else {                            \
+        vmReportError(vm);                \
+        FIBER_SWITCH_BACK();              \
+        return PK_RESULT_RUNTIME_ERROR;   \
+      }                                   \
+    }                                     \
   } while (false)
 
 // [err_msg] must be of type String.
-#define RUNTIME_ERROR(err_msg)       \
-  do {                               \
-    VM_SET_ERROR(vm, err_msg);       \
-    UPDATE_FRAME();                  \
-    vmReportError(vm);               \
-    FIBER_SWITCH_BACK();             \
-    return PK_RESULT_RUNTIME_ERROR;  \
+#define RUNTIME_ERROR(err_msg)            \
+  do {                                    \
+    VM_SET_ERROR(vm, err_msg);            \
+    UPDATE_FRAME();                       \
+    if(isTrying(fiber)) {                 \
+      FIBER_SWITCH_BACK();                \
+      LOAD_FRAME();                       \
+      DISPATCH();                         \
+    } else {                              \
+      vmReportError(vm);                  \
+      FIBER_SWITCH_BACK();                \
+      return PK_RESULT_RUNTIME_ERROR;     \
+    }                                     \
   } while (false)
 
 // Load the last call frame to vm's execution variables to resume/run the
@@ -1125,12 +1190,7 @@ L_vm_main_loop:
 
       Closure* method = (Closure*)AS_OBJ(PEEK(-1));
       Class* cls = (Class*)AS_OBJ(PEEK(-2));
-
-      if (strcmp(method->fn->name, CTOR_NAME) == 0) {
-        cls->ctor = method;
-      }
-
-      pkClosureBufferWrite(&cls->methods, vm, method);
+      bindMethod(vm, cls, method);
 
       DROP();
       DISPATCH();
@@ -1252,12 +1312,7 @@ L_do_call:
         // here).
         *fiber->ret = fiber->self;
 
-        closure = (const Closure*)(cls)->ctor;
-        while (closure == NULL) {
-          cls = cls->super_class;
-          if (cls == NULL) break;
-          closure = cls->ctor;
-        }
+        closure = (const Closure*) getMagicMethod(cls, METHOD_INIT);
 
         // No constructor is defined on the class. Just return self.
         if (closure == NULL) {
@@ -1272,20 +1327,36 @@ L_do_call:
         }
 
       } else {
-        RUNTIME_ERROR(stringFormat(vm, "$ '$'.", "Expected a callable to "
-                      "call, instead got",
-                      varTypeName(callable)));
+        closure = NULL;
+
+        // try to call a "callable instance" via "_call".
+        if (IS_OBJ_TYPE(callable, OBJ_INST)) {
+          Instance* inst = (Instance*)AS_OBJ(callable);
+          closure = getMagicMethod(inst->cls, METHOD_CALL);
+        }
+
+        if (closure == NULL) {
+          RUNTIME_ERROR(stringFormat(vm, "$ '$'.", "Expected a callable to "
+                        "call, instead got",
+                        varTypeName(callable)));
+
+        } else {
+          fiber->self = callable;
+        }
       }
 
       // If we reached here it's a valid callable.
       ASSERT(closure != NULL, OOPS);
 
-      // -1 argument means multiple number of args.
-      if (closure->fn->arity != -1 && closure->fn->arity != argc) {
-        char buff[STR_INT_BUFF_SIZE]; sprintf(buff, "%d", closure->fn->arity);
-        String* msg = stringFormat(vm, "Expected exactly $ argument(s) "
-                                  "for function $", buff, closure->fn->name);
-        RUNTIME_ERROR(msg);
+      // Like lua: Extra arguments are thrown away; extra parameters get null.
+      if (closure->fn->arity != -1) {
+        if (argc > closure->fn->arity) { // adjust stack
+          fiber->sp -= argc - closure->fn->arity;
+        }
+        while (closure->fn->arity > argc) {
+          PUSH(VAR_NULL);
+          argc++;
+        }
       }
 
       if (closure->fn->is_native) {
@@ -1359,7 +1430,6 @@ L_do_call:
       DISPATCH();
     }
 
-    // TODO: move this to a function in pk_core.c.
     OPCODE(ITER):
     {
       Var* value    = (fiber->sp - 1);
@@ -1373,81 +1443,9 @@ L_do_call:
         DISPATCH();          \
       } while (false)
 
-      ASSERT(IS_NUM(*iterator), OOPS);
-      double it = AS_NUM(*iterator); //< Nth iteration.
-      ASSERT(AS_NUM(*iterator) == (int32_t)trunc(it), OOPS);
-
-      Object* obj = AS_OBJ(seq);
-      switch (obj->type) {
-
-        case OBJ_STRING: {
-          uint32_t iter = (int32_t)trunc(it);
-
-          // TODO: // Need to consider utf8.
-          String* str = ((String*)obj);
-          if (iter >= str->length) JUMP_ITER_EXIT();
-
-          //TODO: vm's char (and reusable) strings.
-          *value = VAR_OBJ(newStringLength(vm, str->data + iter, 1));
-          *iterator = VAR_NUM((double)iter + 1);
-
-        } DISPATCH();
-
-        case OBJ_LIST: {
-          uint32_t iter = (int32_t)trunc(it);
-          pkVarBuffer* elems = &((List*)obj)->elements;
-          if (iter >= elems->count) JUMP_ITER_EXIT();
-          *value = elems->data[iter];
-          *iterator = VAR_NUM((double)iter + 1);
-
-        } DISPATCH();
-
-        case OBJ_MAP: {
-          uint32_t iter = (int32_t)trunc(it);
-
-          Map* map = (Map*)obj;
-          if (map->entries == NULL) JUMP_ITER_EXIT();
-          MapEntry* e = map->entries + iter;
-          for (; iter < map->capacity; iter++, e++) {
-            if (!IS_UNDEF(e->key)) break;
-          }
-          if (iter >= map->capacity) JUMP_ITER_EXIT();
-
-          *value = map->entries[iter].key;
-          *iterator = VAR_NUM((double)iter + 1);
-
-        } DISPATCH();
-
-        case OBJ_RANGE: {
-          double from = ((Range*)obj)->from;
-          double to = ((Range*)obj)->to;
-          if (from == to) JUMP_ITER_EXIT();
-
-          double current;
-          if (from <= to) { //< Straight range.
-            current = from + it;
-          } else {          //< Reversed range.
-            current = from - it;
-          }
-          if (current == to) JUMP_ITER_EXIT();
-          *value = VAR_NUM(current);
-          *iterator = VAR_NUM(it + 1);
-
-        } DISPATCH();
-
-        case OBJ_MODULE:
-        case OBJ_FUNC:
-        case OBJ_CLOSURE:
-        case OBJ_METHOD_BIND:
-        case OBJ_UPVALUE:
-        case OBJ_FIBER:
-        case OBJ_CLASS:
-        case OBJ_INST:
-          TODO; break;
-        default:
-          UNREACHABLE();
-      }
-
+      bool cont = varIterate(vm, seq, iterator, value);
+      CHECK_ERROR();
+      if (!cont) JUMP_ITER_EXIT();
       DISPATCH();
     }
 
@@ -1550,7 +1548,7 @@ L_do_call:
       Var on = PEEK(-1); // Don't pop yet, we need the reference for gc.
       String* name = moduleGetStringAt(module, READ_SHORT());
       ASSERT(name != NULL, OOPS);
-      Var value = varGetAttrib(vm, on, name);
+      Var value = varGetAttrib(vm, on, name, false);
       DROP(); // on
       PUSH(value);
 
@@ -1563,7 +1561,7 @@ L_do_call:
       Var on = PEEK(-1);
       String* name = moduleGetStringAt(module, READ_SHORT());
       ASSERT(name != NULL, OOPS);
-      PUSH(varGetAttrib(vm, on, name));
+      PUSH(varGetAttrib(vm, on, name, false));
       CHECK_ERROR();
       DISPATCH();
     }
@@ -1574,7 +1572,7 @@ L_do_call:
       Var on = PEEK(-2);    // Don't pop yet, we need the reference for gc.
       String* name = moduleGetStringAt(module, READ_SHORT());
       ASSERT(name != NULL, OOPS);
-      varSetAttrib(vm, on, name, value);
+      varSetAttrib(vm, on, name, value, false);
 
       DROP(); // value
       DROP(); // on
