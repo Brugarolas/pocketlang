@@ -233,8 +233,8 @@ static void popMarkedObjectsInternal(Object* obj, PKVM* vm) {
 
       markObject(vm, &fiber->caller->_super);
       markObject(vm, &fiber->native->_super);
-      markObject(vm, &fiber->error->_super);
 
+      markValue(vm, fiber->error);
       markValue(vm, fiber->self);
 
     } break;
@@ -244,9 +244,9 @@ static void popMarkedObjectsInternal(Object* obj, PKVM* vm) {
       Class* cls = (Class*)obj;
       vm->bytes_allocated += sizeof(Class);
       markObject(vm, &cls->owner->_super);
-      markObject(vm, &cls->ctor->_super);
       markObject(vm, &cls->name->_super);
       markObject(vm, &cls->static_attribs->_super);
+      // don't need to mark magic_methods, they are all in cls->methods.
 
       markClosureBuffer(vm, &cls->methods);
       vm->bytes_allocated += sizeof(Closure) * cls->methods.capacity;
@@ -495,6 +495,7 @@ Fiber* newFiber(PKVM* vm, Closure* closure) {
 
   fiber->open_upvalues = NULL;
   fiber->self = VAR_UNDEFINED;
+  fiber->error = VAR_NULL;
 
   // Initialize the return value to null (doesn't really have to do that here
   // but if we're trying to debut it may crash when dumping the return value).
@@ -527,6 +528,11 @@ Class* newClass(PKVM* vm, const char* name, int length,
   cls->super_class = super;
   cls->docstring = docstring;
 
+  // Initialize to -1 as undefined
+  for (int i = 0; i < MAX_MAGIC_METHODS; i++) {
+    cls->magic_methods[i] = (Closure*)-1;
+  }
+
   // Builtin types doesn't belongs to a module.
   if (module != NULL) {
     cls->name = moduleAddString(module, vm, name, length, NULL);
@@ -553,10 +559,13 @@ Instance* newInstance(PKVM* vm, Class* cls) {
   vmPushTempRef(vm, &inst->_super); // inst.
 
   inst->cls = cls;
-  if (cls->new_fn != NULL) {
-    inst->native = cls->new_fn(vm);
-  } else {
-    inst->native = NULL;
+  inst->native = NULL;
+  while (cls != NULL) {
+    if (cls->new_fn != NULL) {
+      inst->native = cls->new_fn(vm);
+      break;
+    }
+    cls = cls->super_class;
   }
 
   inst->attribs = newMap(vm);
@@ -747,45 +756,82 @@ String* stringReplace(PKVM* vm, String* self,
   return replaced;
 }
 
+void* _memmem(const void *l, size_t l_len, const void *s, size_t s_len)
+{
+  register char *cur, *last;
+  const char *cl = (const char *)l;
+  const char *cs = (const char *)s;
+
+  /* we need something to compare */
+  if (l_len == 0 || s_len == 0)
+    return NULL;
+
+  /* "s" must be smaller or equal to "l" */
+  if (l_len < s_len)
+    return NULL;
+
+  /* special case where s_len == 1 */
+  if (s_len == 1)
+    return memchr(l, (int)*cs, l_len);
+
+  /* the last position where its possible to find "s" in "l" */
+  last = (char *)cl + l_len - s_len;
+
+  for (cur = (char *)cl; cur <= last; cur++)
+    if (cur[0] == cs[0] && memcmp(cur, cs, s_len) == 0)
+      return cur;
+
+  return NULL;
+}
+
 List* stringSplit(PKVM* vm, String* self, String* sep) {
-
-  ASSERT(sep->length != 0, OOPS);
-
-  const char* s = self->data; // Current position in self.
 
   List* list = newList(vm, 0);
   vmPushTempRef(vm, &list->_super); // list.
-  do {
-    const char* match = strstr(s, sep->data);
-    if (match == NULL) {
 
-      // Add the tail string from [s] till the end. Optimize case: if the
-      // string doesn't have any match we can reuse self.
-      if (s == self->data) {
-        ASSERT(list->elements.count == 0, OOPS);
-        listAppend(vm, list, VAR_OBJ(self));
+  if (sep == NULL || sep->length == 0) {
+    for (int i = 0; i < self->length; i++) {
+      String* ch = newStringLength(vm, &self->data[i], 1);
+      vmPushTempRef(vm, &ch->_super); // ch
+      listAppend(vm, list, VAR_OBJ(ch));
+      vmPopTempRef(vm); // ch
+    }
+  } else {
 
-      } else {
-        String* tail = newStringLength(vm, s,
-          (uint32_t)(self->length - (s - self->data)));
-        vmPushTempRef(vm, &tail->_super); // tail.
-        listAppend(vm, list, VAR_OBJ(tail));
-        vmPopTempRef(vm); // tail.
+    const char* s = self->data; // Current position in self.
+    do {
+      const char* match = _memmem(s, self->length - (s - self->data),
+        sep->data, sep->length);
+
+      if (match == NULL) {
+
+        // Add the tail string from [s] till the end. Optimize case: if the
+        // string doesn't have any match we can reuse self.
+        if (s == self->data) {
+          listAppend(vm, list, VAR_OBJ(self));
+
+        } else {
+          String* tail = newStringLength(vm, s,
+            (uint32_t)(self->length - (s - self->data)));
+          vmPushTempRef(vm, &tail->_super); // tail.
+          listAppend(vm, list, VAR_OBJ(tail));
+          vmPopTempRef(vm); // tail.
+        }
+
+        break; // We're done.
       }
 
-      break; // We're done.
-    }
+      String* split = newStringLength(vm, s, (uint32_t)(match - s));
+      vmPushTempRef(vm, &split->_super); // split.
+      listAppend(vm, list, VAR_OBJ(split));
+      vmPopTempRef(vm); // split.
 
-    String* split = newStringLength(vm, s, (uint32_t)(match - s));
-    vmPushTempRef(vm, &split->_super); // split.
-    listAppend(vm, list, VAR_OBJ(split));
-    vmPopTempRef(vm); // split.
+      s = match + sep->length;
 
-    s = match + sep->length;
+    } while (true);
+  }
 
-  } while (true);
   vmPopTempRef(vm); // list.
-
   return list;
 }
 
@@ -912,17 +958,15 @@ void listClear(PKVM* vm, List* self) {
 }
 
 List* listAdd(PKVM* vm, List* l1, List* l2) {
+  // l1 and l2 can be NULL, and always return a new list
+  // returned list should not have the same reference of l1 or l2.
 
-  // Optimize end case.
-  if (l1->elements.count == 0) return l2;
-  if (l2->elements.count == 0) return l1;
-
-  uint32_t size = l1->elements.count + l2->elements.count;
+  uint32_t size = (l1? l1->elements.count: 0) + (l2? l2->elements.count: 0);
   List* list = newList(vm, size);
 
   vmPushTempRef(vm, &list->_super); // list.
-  pkVarBufferConcat(&list->elements, vm, &l1->elements);
-  pkVarBufferConcat(&list->elements, vm, &l2->elements);
+  if (l1) pkVarBufferConcat(&list->elements, vm, &l1->elements);
+  if (l2) pkVarBufferConcat(&list->elements, vm, &l2->elements);
   vmPopTempRef(vm); // list.
 
   return list;
@@ -1130,8 +1174,19 @@ Var mapRemoveKey(PKVM* vm, Map* self, Var key) {
   return value;
 }
 
+Map* mapDup(PKVM* vm, Map* self) {
+  Map* map = newMap(vm);
+  vmPushTempRef(vm, &map->_super); // map.
+  map->capacity = self->capacity;
+  map->count = self->count;
+  map->entries = ALLOCATE_ARRAY(vm, MapEntry, self->capacity);
+  memcpy(map->entries, self->entries, self->capacity * sizeof(MapEntry));
+  vmPopTempRef(vm); // map
+  return map;
+}
+
 bool fiberHasError(Fiber* fiber) {
-  return fiber->error != NULL;
+  return fiber->error != VAR_NULL;
 }
 
 void freeObject(PKVM* vm, Object* self) {
@@ -1224,9 +1279,15 @@ void freeObject(PKVM* vm, Object* self) {
 
     case OBJ_INST: {
       Instance* inst = (Instance*)self;
-      if (inst->cls->delete_fn != NULL) {
-        inst->cls->delete_fn(vm, inst->native);
+      Class* cls = inst->cls;
+      while (cls != NULL) {
+        if (cls->delete_fn != NULL) {
+          cls->delete_fn(vm, inst->native);
+          break;
+        }
+        cls = cls->super_class;
       }
+
       DEALLOCATE(vm, inst, Instance);
       return;
     }

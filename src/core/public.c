@@ -307,11 +307,9 @@ void pkClassAddMethod(PKVM* vm, PkHandle* cls,
 
   Closure* method = newClosure(vm, fn);
   vmPopTempRef(vm); // fn.
+
   vmPushTempRef(vm, &method->_super); // method.
-  {
-    pkClosureBufferWrite(&class_->methods, vm, method);
-    if (!strcmp(name, CTOR_NAME)) class_->ctor = method;
-  }
+  bindMethod(vm, class_, method);
   vmPopTempRef(vm); // method.
 }
 
@@ -457,7 +455,6 @@ static inline bool isStringEmpty(const char* line) {
 // This function will get the main function from the module to run it in the
 // repl mode.
 Closure* moduleGetMainFunction(PKVM* vm, Module* module) {
-
   int main_index = moduleGetGlobalIndex(module, IMPLICIT_MAIN_NAME,
                                         (uint32_t) strlen(IMPLICIT_MAIN_NAME));
   if (main_index == -1) return NULL;
@@ -568,7 +565,11 @@ PkResult pkRunREPL(PKVM* vm) {
 
 void pkSetRuntimeError(PKVM* vm, const char* message) {
   CHECK_FIBER_EXISTS(vm);
-  VM_SET_ERROR(vm, newString(vm, message));
+  if (message != NULL) {
+    VM_SET_ERROR(vm, newString(vm, message));
+  } else {
+    VM_RESET_ERROR(vm);
+  }
 }
 
 void pkSetRuntimeErrorFmt(PKVM* vm, const char* fmt, ...) {
@@ -576,6 +577,18 @@ void pkSetRuntimeErrorFmt(PKVM* vm, const char* fmt, ...) {
   va_start(args, fmt);
   VM_SET_ERROR(vm, newStringVaArgs(vm, fmt, args));
   va_end(args);
+}
+
+void pkSetRuntimeErrorObj(PKVM* vm, int slot) {
+  CHECK_FIBER_EXISTS(vm);
+  VALIDATE_SLOT_INDEX(slot);
+  vm->fiber->error = ARG(slot);
+}
+
+void pkGetRuntimeError(PKVM* vm, int slot) {
+  CHECK_FIBER_EXISTS(vm);
+  VALIDATE_SLOT_INDEX(slot);
+  SET_SLOT(slot, vm->fiber->error);
 }
 
 void* pkGetSelf(const PKVM* vm) {
@@ -697,6 +710,7 @@ bool pkValidateSlotInstanceOf(PKVM* vm, int slot, int cls) {
   CHECK_FIBER_EXISTS(vm);
   VALIDATE_SLOT_INDEX(slot);
   VALIDATE_SLOT_INDEX(cls);
+  VM_RESET_ERROR(vm);
 
   Var instance = ARG(slot), class_ = SLOT(cls);
   if (!varIsType(vm, instance, class_)) {
@@ -710,11 +724,14 @@ bool pkValidateSlotInstanceOf(PKVM* vm, int slot, int cls) {
 }
 
 bool pkIsSlotInstanceOf(PKVM* vm, int inst, int cls, bool* val) {
+  CHECK_FIBER_EXISTS(vm);
   CHECK_ARG_NULL(val);
   VALIDATE_SLOT_INDEX(inst);
   VALIDATE_SLOT_INDEX(cls);
+  VM_RESET_ERROR(vm);
 
-  *val = varIsType(vm, inst, cls);
+  Var instance = ARG(inst), class_ = SLOT(cls);
+  *val = varIsType(vm, instance, class_);
   return !VM_HAS_ERROR(vm);
 }
 
@@ -839,10 +856,11 @@ bool pkSetAttribute(PKVM* vm, int instance, const char* name, int value) {
   CHECK_ARG_NULL(name);
   VALIDATE_SLOT_INDEX(instance);
   VALIDATE_SLOT_INDEX(value);
+  VM_RESET_ERROR(vm);
 
   String* sname = newString(vm, name);
   vmPushTempRef(vm, &sname->_super); // sname.
-  varSetAttrib(vm, SLOT(instance), sname, SLOT(value));
+  varSetAttrib(vm, SLOT(instance), sname, SLOT(value), true);
   vmPopTempRef(vm); // sname.
 
   return !VM_HAS_ERROR(vm);
@@ -854,10 +872,11 @@ bool pkGetAttribute(PKVM* vm, int instance, const char* name,
   CHECK_ARG_NULL(name);
   VALIDATE_SLOT_INDEX(instance);
   VALIDATE_SLOT_INDEX(index);
+  VM_RESET_ERROR(vm);
 
   String* sname = newString(vm, name);
   vmPushTempRef(vm, &sname->_super); // sname.
-  SET_SLOT(index, varGetAttrib(vm, SLOT(instance), sname));
+  SET_SLOT(index, varGetAttrib(vm, SLOT(instance), sname, true));
   vmPopTempRef(vm); // sname.
 
   return !VM_HAS_ERROR(vm);
@@ -867,17 +886,20 @@ static Var _newInstance(PKVM* vm, Class* cls, int argc, Var* argv) {
   Var instance = preConstructSelf(vm, cls);
   if (VM_HAS_ERROR(vm)) return VAR_NULL;
 
-  if (IS_OBJ(instance)) vmPushTempRef(vm, AS_OBJ(instance)); // instance.
-
-  Closure* ctor = cls->ctor;
-  while (ctor == NULL) {
-    cls = cls->super_class;
-    if (cls == NULL) break;
-    ctor = cls->ctor;
+  bool pushed = false;
+  if (IS_OBJ(instance)) {
+    vmPushTempRef(vm, AS_OBJ(instance)); // instance.
+    pushed = true;
   }
 
-  if (ctor != NULL) vmCallMethod(vm, instance, ctor, argc, argv, NULL);
-  if (IS_OBJ(instance)) vmPopTempRef(vm); // instance.
+  Closure* init = getMagicMethod(cls, METHOD_INIT);
+  if (init != NULL) {
+    // for builtin classes, preConstructSelf returns null,
+    // and instance is returned by _init.
+    vmCallMethod(vm, instance, init, argc, argv,
+      IS_NULL(instance) ? &instance : NULL);
+  }
+  if (pushed) vmPopTempRef(vm); // instance.
 
   return instance;
 }
@@ -885,6 +907,7 @@ static Var _newInstance(PKVM* vm, Class* cls, int argc, Var* argv) {
 bool pkNewInstance(PKVM* vm, int cls, int index, int argc, int argv) {
   CHECK_FIBER_EXISTS(vm);
   VALIDATE_SLOT_INDEX(index);
+  VM_RESET_ERROR(vm);
 
   if (argc != 0) {
     VALIDATE_SLOT_INDEX(argv);
@@ -969,6 +992,7 @@ uint32_t pkListLength(PKVM* vm, int list) {
 
 bool pkCallFunction(PKVM* vm, int fn, int argc, int argv, int ret) {
   CHECK_FIBER_EXISTS(vm);
+  VM_RESET_ERROR(vm);
   ASSERT(IS_OBJ_TYPE(SLOT(fn), OBJ_CLOSURE), "Slot value wasn't a function");
   if (argc != 0) {
     VALIDATE_SLOT_INDEX(argv);
@@ -1009,6 +1033,7 @@ bool pkCallMethod(PKVM* vm, int instance, const char* method,
   CHECK_FIBER_EXISTS(vm);
   CHECK_ARG_NULL(method);
   VALIDATE_SLOT_INDEX(instance);
+  VM_RESET_ERROR(vm);
   if (argc != 0) {
     VALIDATE_SLOT_INDEX(argv);
     VALIDATE_SLOT_INDEX(argv + argc - 1);
@@ -1054,6 +1079,7 @@ void pkPlaceSelf(PKVM* vm, int index) {
 bool pkImportModule(PKVM* vm, const char* path, int index) {
   CHECK_FIBER_EXISTS(vm);
   VALIDATE_SLOT_INDEX(index);
+  VM_RESET_ERROR(vm);
 
   String* path_ = newString(vm, path);
   vmPushTempRef(vm, &path_->_super); // path_
