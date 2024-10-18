@@ -19,6 +19,7 @@ void registerModuleOS(PKVM* vm);
 void registerModuleJson(PKVM* vm);
 void registerModuleDummy(PKVM* vm);
 void registerModuleTerm(PKVM* vm);
+void registerModuleRandom(PKVM* vm);
 void registerModuleRe(PKVM* vm);
 void registerModuleAlgorithm(PKVM* vm);
 
@@ -35,6 +36,7 @@ void registerLibs(PKVM* vm) {
   registerModuleJson(vm);
   registerModuleDummy(vm);
   registerModuleTerm(vm);
+  registerModuleRandom(vm);
   registerModuleRe(vm);
   registerModuleAlgorithm(vm);
 }
