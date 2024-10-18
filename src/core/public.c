@@ -730,7 +730,8 @@ bool pkIsSlotInstanceOf(PKVM* vm, int inst, int cls, bool* val) {
   VALIDATE_SLOT_INDEX(cls);
   VM_RESET_ERROR(vm);
 
-  *val = varIsType(vm, inst, cls);
+  Var instance = ARG(inst), class_ = SLOT(cls);
+  *val = varIsType(vm, instance, class_);
   return !VM_HAS_ERROR(vm);
 }
 
