@@ -4,16 +4,13 @@
  *  Distributed Under The MIT License
  */
 
-#ifndef PK_COMPILER_H
-#define PK_COMPILER_H
+#pragma once
 
-#ifndef PK_AMALGAMATED
 #include "value.h"
-#endif
 
 typedef enum {
   #define OPCODE(name, _, __) OP_##name,
-  #include "opcodes.h"  //<< AMALG_INLINE >>
+  #include "opcodes.h"
   #undef OPCODE
 } Opcode;
 
@@ -55,5 +52,3 @@ PkResult compile(PKVM* vm, Module* module, const char* source,
 // Mark the heap allocated objects of the compiler at the garbage collection
 // called at the marking phase of vmCollectGarbage().
 void compilerMarkObjects(PKVM* vm, Compiler* compiler);
-
-#endif // PK_COMPILER_H

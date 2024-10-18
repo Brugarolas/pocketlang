@@ -6,15 +6,13 @@
 
 #include <math.h>
 
-#ifndef PK_AMALGAMATED
 #include "libs.h"
-#endif
 
 // M_PI is non standard. For a portable solution, we're defining it ourselves.
 #define PK_PI 3.14159265358979323846
 
 DEF(stdMathFloor,
-  "math.floor(value:Numberber) -> Numberber",
+  "math.floor(value:Number) -> Number",
   "Return the floor value.") {
 
   double num;
@@ -207,7 +205,7 @@ DEF(stdMathRand,
   // RAND_MAX is implementation dependent but is guaranteed to be at least
   // 0x7fff on any standard library implementation.
   // https://www.cplusplus.com/reference/cstdlib/RAND_MAX/
-  pkSetSlotNumber(vm, 0, rand() % 0x7fff);
+  pkSetSlotNumber(vm, 0, (double)(rand() % RAND_MAX) / (double)(RAND_MAX));
 }
 
 /*****************************************************************************/

@@ -4,17 +4,15 @@
  *  Distributed Under The MIT License
  */
 
-#ifndef PK_AMALGAMATED
 #include "libs.h"
-#endif
 
 // FIXME:
 // In windows MinGw support most of the posix libraries. So we only need to
 // check if it's MSVC (and tcc in windows) or not for posix headers and
 // Refactor the bellow macro includes.
 
-#include "thirdparty/cwalk/cwalk.h" //<< AMALG_INLINE >>
-#include "thirdparty/cwalk/cwalk.c" //<< AMALG_INLINE >>
+#include "thirdparty/cwalk/cwalk.h"
+#include "thirdparty/cwalk/cwalk.c"
 
 #include <sys/stat.h>
 
@@ -26,7 +24,7 @@
   #include <direct.h>
   #include <io.h>
 
-  #include "thirdparty/dirent/dirent.h"  //<< AMALG_INLINE >>
+  #include "thirdparty/dirent/dirent.h"
 
   // access() function flag defines for windows.
   // Reference :https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/access-waccess?view=msvc-170#remarks

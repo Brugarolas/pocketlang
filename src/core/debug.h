@@ -4,13 +4,10 @@
  *  Distributed Under The MIT License
  */
 
-#ifndef PK_DEBUG_H
-#define PK_DEBUG_H
+#pragma once
 
-#ifndef PK_AMALGAMATED
 #include "internal.h"
 #include "value.h"
-#endif
 
 // Pretty print compile time error.
 void reportCompileTimeError(PKVM* vm, const char* path, int line,
@@ -28,5 +25,3 @@ void dumpGlobalValues(PKVM* vm);
 
 // Dump the current (top most) stack call frame to the stdout.
 void dumpStackFrame(PKVM* vm);
-
-#endif // PK_DEBUG_H

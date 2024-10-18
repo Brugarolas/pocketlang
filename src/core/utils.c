@@ -4,14 +4,12 @@
  *  Distributed Under The MIT License
  */
 
-#ifndef PK_AMALGAMATED
-#include "utils.h"
-#endif
-
 #include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "utils.h"
 
 // Function implementation, see utils.h for description.
 int utilPowerOf2Ceil(int n) {

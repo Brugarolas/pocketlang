@@ -7,11 +7,9 @@
 #include <math.h>
 #include <ctype.h>
 
-#ifndef PK_AMALGAMATED
 #include "value.h"
 #include "utils.h"
 #include "vm.h"
-#endif
 
 // The maximum percentage of the map entries that can be filled before the map
 // is grown. A lower percentage reduce collision which makes looks up faster
@@ -1522,42 +1520,32 @@ struct OuterSequence {
 };
 typedef struct OuterSequence OuterSequence;
 
-static void _toStringInternal(PKVM* vm, const Var v, pkByteBuffer* buff,
-                              OuterSequence* outer, bool repr) {
+static void _toStringInternal(PKVM* vm, const Var v, pkByteBuffer* buff, OuterSequence* outer, bool repr) {
   ASSERT(outer == NULL || repr, OOPS);
-
   if (IS_NULL(v)) {
     pkByteBufferAddString(buff, vm, "null", 4);
     return;
-
   } else if (IS_BOOL(v)) {
     if (AS_BOOL(v)) pkByteBufferAddString(buff, vm, "true", 4);
     else pkByteBufferAddString(buff, vm, "false", 5);
     return;
-
   } else if (IS_NUM(v)) {
     double value = AS_NUM(v);
-
     if (isnan(value)) {
       pkByteBufferAddString(buff, vm, "nan", 3);
-
     } else if (isinf(value)) {
       if (value > 0.0) {
         pkByteBufferAddString(buff, vm, "+inf", 4);
       } else {
         pkByteBufferAddString(buff, vm, "-inf", 4);
       }
-
     } else {
       char num_buff[STR_DBL_BUFF_SIZE];
       int length = sprintf(num_buff, DOUBLE_FMT, AS_NUM(v));
       pkByteBufferAddString(buff, vm, num_buff, length);
     }
-
     return;
-
   } else if (IS_OBJ(v)) {
-
     const Object* obj = AS_OBJ(v);
     switch (obj->type) {
 
@@ -1779,7 +1767,6 @@ static void _toStringInternal(PKVM* vm, const Var v, pkByteBuffer* buff,
         return;
       }
     }
-
   }
   UNREACHABLE();
   return;
@@ -1837,6 +1824,5 @@ bool toBool(Var v) {
   return false;
 }
 
-// Undefining for amalgamation to let othre libraries also define _MIN, _MAX.
 #undef _MAX
 #undef _MIN

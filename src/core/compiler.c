@@ -4,14 +4,12 @@
  *  Distributed Under The MIT License
  */
 
-#ifndef PK_AMALGAMATED
 #include "compiler.h"
 #include "core.h"
 #include "buffers.h"
 #include "utils.h"
 #include "vm.h"
 #include "debug.h"
-#endif
 
 // The maximum number of locals or global (if compiling top level module)
 // to lookup from the compiling context. Also it's limited by it's opcode
@@ -504,7 +502,7 @@ typedef struct {
 
 static OpInfo opcode_info[] = {
   #define OPCODE(name, params, stack) { params, stack },
-  #include "opcodes.h"  //<< AMALG_INLINE >>
+  #include "opcodes.h"
   #undef OPCODE
 };
 
@@ -940,31 +938,25 @@ static void eatNumber(Compiler* compiler) {
 
     // Parse if in scientific notation format (MeN == M * 10 ** N).
     if (matchChar(parser, 'e') || matchChar(parser, 'E')) {
-
       if (peekChar(parser) == '+' || peekChar(parser) == '-') {
         eatChar(parser);
       }
-
       if (!utilIsDigit(peekChar(parser))) {
         syntaxError(compiler, makeErrToken(parser), "Invalid number literal.");
         return;
-
       } else { // Eat the exponent.
         while (utilIsDigit(peekChar(parser))) eatChar(parser);
       }
     }
-
     errno = 0;
-    value = VAR_NUM(atof(parser->token_start));
+    value = VAR_NUM((double)atof(parser->token_start));
     if (errno == ERANGE) {
       const char* start = parser->token_start;
       int len = (int)(parser->current_char - start);
-      semanticError(compiler, makeErrToken(parser),
-                    "Number literal is too large (%.*s).", len, start);
-      value = VAR_NUM(0);
+      semanticError(compiler, makeErrToken(parser), "Number literal is too large (%.*s).", len, start);
+      value = VAR_NUM(0.0);
     }
   }
-
   setNextValueToken(parser, TK_NUMBER, value);
 #undef IS_BIN_CHAR
 }
@@ -2054,6 +2046,14 @@ void exprAnd(Compiler* compiler) {
 static void exprBinaryOp(Compiler* compiler) {
   _TokenType op = compiler->parser.previous.type;
   skipNewLines(compiler);
+
+  // Have to check this before continuing parsing as `is not` is two tokens but
+  // one operator.
+  bool isIsNot = false;
+  if (op == TK_IS) {
+    isIsNot = match(compiler, TK_NOT);
+  }
+
   parsePrecedence(compiler, (Precedence)(getRule(op)->precedence + 1));
 
   // Emits the opcode and 0 (means false) as inplace operation.
@@ -2082,7 +2082,13 @@ static void exprBinaryOp(Compiler* compiler) {
     case TK_GTEQ:    emitOpcode(compiler, OP_GTEQ);  break;
     case TK_LTEQ:    emitOpcode(compiler, OP_LTEQ);  break;
     case TK_IN:      emitOpcode(compiler, OP_IN);    break;
-    case TK_IS:      emitOpcode(compiler, OP_IS);    break;
+    case TK_IS: {
+      emitOpcode(compiler, OP_IS);
+      if (isIsNot) {
+        emitOpcode(compiler, OP_NOT);
+      }
+      break;
+    }
     default:
       UNREACHABLE();
   }

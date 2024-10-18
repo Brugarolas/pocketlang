@@ -6,17 +6,25 @@
 
 #include <stdio.h>
 
-#ifndef PK_AMALGAMATED
 #include "debug.h"
 #include "vm.h"
-#endif
 
 // FIXME:
 // Refactor this. Maybe move to a module, Rgb values are hardcoded ?!
 // Should check stderr/stdout etc.
-static void _printRed(PKVM* vm, const char* msg) {
+static void _printErrorImportance(PKVM* vm, const char* msg) {
   if (vm->config.use_ansi_escape) {
-    vm->config.stderr_write(vm, "\033[38;2;220;100;100m");
+    vm->config.stderr_write(vm, "\033[1;31m");
+    vm->config.stderr_write(vm, msg);
+    vm->config.stderr_write(vm, "\033[0m");
+  } else {
+    vm->config.stderr_write(vm, msg);
+  }
+}
+
+static void _printFileImportance(PKVM* vm, const char* msg) {
+  if (vm->config.use_ansi_escape) {
+    vm->config.stderr_write(vm, "\033[34m");
     vm->config.stderr_write(vm, msg);
     vm->config.stderr_write(vm, "\033[0m");
   } else {
@@ -42,7 +50,7 @@ void reportCompileTimeError(PKVM* vm, const char* path, int line,
     writefn(vm, ":");
     snprintf((char*)buff.data, buff.capacity, "%d", line);
     writefn(vm, (char*)buff.data);
-    _printRed(vm, " error: ");
+    _printErrorImportance(vm, " error: ");
 
     // Print the error message.
     buff.count = 0;
@@ -121,7 +129,7 @@ void reportCompileTimeError(PKVM* vm, const char* path, int line,
           buff.count = 0;
           pkByteBufferAddString(&buff, vm, at, length);
           pkByteBufferWrite(&buff, vm, '\0');
-          _printRed(vm, (char*)buff.data);
+          _printErrorImportance(vm, (char*)buff.data);
 
           // Run to the line end. Note that tk.length is not reliable and
           // sometimes longer than the actual string which will cause a
@@ -165,7 +173,7 @@ void reportCompileTimeError(PKVM* vm, const char* path, int line,
         buff.count = 0;
         pkByteBufferFill(&buff, vm, '~', (uint32_t)(length ? length : 1));
         pkByteBufferWrite(&buff, vm, '\0');
-        _printRed(vm, (char*)buff.data);
+        _printErrorImportance(vm, (char*)buff.data);
         writefn(vm, "\n");
 
       }
@@ -192,25 +200,26 @@ static void _reportStackFrame(PKVM* vm, CallFrame* frame) {
   int line = fn->fn->oplines.data[instruction_index];
 
   if (fn->owner->path == NULL) {
-
-    writefn(vm, "  [at:");
+    writefn(vm, "  in function ");
+    writefn(vm, fn->name);
+    writefn(vm, "(): ");
+    _printFileImportance(vm, "line ");
     char buff[STR_INT_BUFF_SIZE];
     sprintf(buff, "%2d", line);
-    writefn(vm, buff);
-    writefn(vm, "] ");
-    writefn(vm, fn->name);
-    writefn(vm, "()\n");
+    _printFileImportance(vm, buff);
+    writefn(vm, "\n");
 
   } else {
-    writefn(vm, "  ");
+    writefn(vm, "  in '");
+    _printFileImportance(vm, fn->owner->path->data);
+    writefn(vm, "' ");
     writefn(vm, fn->name);
-    writefn(vm, "() [");
-    writefn(vm, fn->owner->path->data);
-    writefn(vm, ":");
+    writefn(vm, "(): ");
+    _printFileImportance(vm, "line ");
     char buff[STR_INT_BUFF_SIZE];
     sprintf(buff, "%d", line);
-    writefn(vm, buff);
-    writefn(vm, "]\n");
+    _printFileImportance(vm, buff);
+    writefn(vm, "\n");
   }
 }
 
@@ -220,7 +229,7 @@ void reportRuntimeError(PKVM* vm, Fiber* fiber) {
   if (writefn == NULL) return;
 
   // Error message.
-  _printRed(vm, "Error: ");
+  _printErrorImportance(vm, "Error: ");
   writefn(vm, fiber->error->data);
   writefn(vm, "\n");
 
@@ -259,7 +268,7 @@ void reportRuntimeError(PKVM* vm, Fiber* fiber) {
 // Opcode names array.
 static const char* op_names[] = {
   #define OPCODE(name, params, stack) #name,
-  #include "opcodes.h"  //<< AMALG_INLINE >>
+  #include "opcodes.h"
   #undef OPCODE
 };
 

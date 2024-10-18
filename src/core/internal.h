@@ -4,13 +4,10 @@
  *  Distributed Under The MIT License
  */
 
-#ifndef PK_INTERNAL
-#define PK_INTERNAL
+#pragma once
 
-#ifndef PK_AMALGAMATED
 #include <pocketlang.h>
 #include "common.h"
-#endif
 
 // Commonly used C standard headers across the sources. Don't include any
 // headers that are specific to a single source here, instead include them in
@@ -169,5 +166,3 @@
 // +  2 for '0b' prefix
 // +  1 for null byte '\0'
 #define STR_BIN_BUFF_SIZE 68
-
-#endif // PK_INTERNAL

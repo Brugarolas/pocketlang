@@ -8,12 +8,10 @@
 #include <limits.h>
 #include <math.h>
 
-#ifndef PK_AMALGAMATED
 #include "core.h"
 #include "debug.h"
 #include "utils.h"
 #include "vm.h"
-#endif
 
 // A convenient macro to get the nth (1 based) argument of the current
 // function.

@@ -4,8 +4,7 @@
  *  Distributed Under The MIT License
  */
 
-#ifndef POCKETLANG_H
-#define POCKETLANG_H
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,6 +28,10 @@ extern "C" {
 
 // String representation of the version.
 #define PK_VERSION_STRING "0.1.0"
+
+#ifndef PK_STACK_STRING_MAX_LENGTH
+  #define PK_STACK_STRING_MAX_LENGTH 64
+#endif
 
 // Pocketlang visibility macros. define PK_DLL for using pocketlang as a 
 // shared library and define PK_COMPILE to export symbols when compiling the
@@ -277,6 +280,8 @@ PK_PUBLIC void* pkRealloc(PKVM* vm, void* ptr, size_t size);
 // this for every handles before freeing the VM.
 PK_PUBLIC void pkReleaseHandle(PKVM* vm, PkHandle* handle);
 
+PK_PUBLIC void* pkGetHandleNativeInstance(PKVM* vm, PkHandle* handle);
+
 // Add a new module named [name] to the [vm]. Note that the module shouldn't
 // already existed, otherwise an assertion will fail to indicate that.
 PK_PUBLIC PkHandle* pkNewModule(PKVM* vm, const char* name);
@@ -293,6 +298,10 @@ PK_PUBLIC void pkModuleAddFunction(PKVM* vm, PkHandle* module,
                                    const char* name,
                                    pkNativeFn fptr, int arity,
                                    const char* docstring);
+
+PK_PUBLIC bool pkModuleFindClass(PKVM* vm, PkHandle* module, const char* name, int index);
+
+PK_PUBLIC void pkModuleSetPath(PKVM* vm, PkHandle* module, const char* path);
 
 // Create a new class on the [module] with the [name] and return it.
 // If the [base_class] is NULL by default it'll set to "Object" class.
@@ -316,8 +325,13 @@ PK_PUBLIC void pkClassAddMethod(PKVM* vm, PkHandle* cls,
 PK_PUBLIC void pkModuleAddSource(PKVM* vm, PkHandle* module,
                                  const char* source);
 
-// Run the source string. The [source] is expected to be valid till this
-// function returns.
+PK_PUBLIC PkResult pkRunModule(PKVM* vm, PkHandle* module);
+
+// Run a source string, setting its path to [path]. Specifying the path can be
+// helpful for debugging. The [source] must be valid until the function returns.
+PK_PUBLIC PkResult pkRunStringWithPath(PKVM* vm, const char* path, const char* source);
+
+// Run a source string. The [source] must be valid until the function returns.
 PK_PUBLIC PkResult pkRunString(PKVM* vm, const char* source);
 
 // Run the file at [path] relative to the current working directory.
@@ -335,11 +349,18 @@ PK_PUBLIC PkResult pkRunREPL(PKVM* vm);
 /* NATIVE / RUNTIME FUNCTION API                                             */
 /*****************************************************************************/
 
+PK_PUBLIC void pkClearRuntimeError(PKVM* vm);
+
 // Set a runtime error to VM.
 PK_PUBLIC void pkSetRuntimeError(PKVM* vm, const char* message);
 
 // Set a runtime error with C formated string.
 PK_PUBLIC void pkSetRuntimeErrorFmt(PKVM* vm, const char* fmt, ...);
+
+// Get any current runtime error as a C string.
+PK_PUBLIC const char* pkGetRuntimeError(PKVM* vm);
+
+PK_PUBLIC bool pkHasRuntimeError(PKVM* vm);
 
 // Returns native [self] of the current method as a void*.
 PK_PUBLIC void* pkGetSelf(const PKVM* vm);
@@ -365,6 +386,10 @@ PK_PUBLIC bool pkValidateSlotNumber(PKVM* vm, int slot, double* value);
 // and if not set a runtime error.
 PK_PUBLIC bool pkValidateSlotInteger(PKVM* vm, int slot, int32_t* value);
 
+// Check if the argument at [slot] is a number and retrieve it as an integer,
+// flooring away any decimal part.
+PK_PUBLIC bool pkValidateSlotNumberInteger(PKVM* vm, int slot, int32_t* value);
+
 // Helper function to check if the argument at the [slot] slot is String and
 // if not set a runtime error.
 PK_PUBLIC bool pkValidateSlotString(PKVM* vm, int slot,
@@ -383,6 +408,18 @@ PK_PUBLIC bool pkValidateSlotInstanceOf(PKVM* vm, int slot, int cls);
 // if the object at [cls] slot isn't a valid class a runtime error will be set
 // and return false.
 PK_PUBLIC bool pkIsSlotInstanceOf(PKVM* vm, int inst, int cls, bool* val);
+
+PK_PUBLIC bool pkIsSlotBool(PKVM* vm, int index);
+
+PK_PUBLIC bool pkIsSlotNumber(PKVM* vm, int index);
+
+PK_PUBLIC bool pkIsSlotString(PKVM* vm, int index);
+
+PK_PUBLIC bool pkIsSlotNull(PKVM* vm, int index);
+
+PK_PUBLIC bool pkIsSlotMap(PKVM* vm, int index);
+
+PK_PUBLIC bool pkIsSlotList(PKVM* vm, int index);
 
 // Make sure the fiber has [count] number of slots to work with (including the
 // arguments).
@@ -427,6 +464,9 @@ PK_PUBLIC void pkSetSlotBool(PKVM* vm, int index, bool value);
 // Set the [index] slot numeric value as the given [value].
 PK_PUBLIC void pkSetSlotNumber(PKVM* vm, int index, double value);
 
+// Set the value of slot [index] to the given integer.
+PK_PUBLIC void pkSetSlotInteger(PKVM* vm, int index, int32_t value);
+
 // Create a new String copying the [value] and set it to [index] slot.
 PK_PUBLIC void pkSetSlotString(PKVM* vm, int index, const char* value);
 
@@ -443,6 +483,9 @@ PK_PUBLIC void pkSetSlotStringFmt(PKVM* vm, int index, const char* fmt, ...);
 // reclaim the ownership of the handle and you can still use it till
 // it's released by yourself.
 PK_PUBLIC void pkSetSlotHandle(PKVM* vm, int index, PkHandle* handle);
+
+// Copy a value from one slot to another.
+PK_PUBLIC void pkCopySlot(PKVM* vm, int from, int to);
 
 // Returns the hash of the [index] slot value. The value at the [index] must be
 // hashable.
@@ -475,6 +518,24 @@ PK_PUBLIC void pkNewList(PKVM* vm, int index);
 // Create a new Map object and place it at [index] slot.
 PK_PUBLIC void pkNewMap(PKVM* vm, int index);
 
+// Look up the key in [key] slot from the map at [index] and place it in slot
+// [value]. Returns whether the key exists in the map. If it does not, the
+// [value] slot will contain Null.
+PK_PUBLIC bool pkMapGet(PKVM* vm, int index, int key, int value);
+
+// Look up a string key from the map at [index] and place it in slot [value].
+// Returns whether the key exists in the map.
+//
+// This function can only be called with keys of length <=
+// PK_STACK_STRING_LENGTH_THRESHOLD as it allocates a temporary string object on
+// the stack.
+PK_PUBLIC bool pkMapStackStringGet(PKVM* vm, int index, const char* key, int value);
+
+// Set the key [key] in the map at [index] to the value in slot [value].
+PK_PUBLIC bool pkMapSet(PKVM* vm, int index, int key, int value);
+
+PK_PUBLIC bool pkMapStackStringSet(PKVM* vm, int index, const char* key, int value);
+
 // Insert [value] to the [list] at the [index], if the index is less than zero,
 // it'll count from backwards. ie. insert[-1] == insert[list.length].
 // Note that slot [list] must be a valid list otherwise it'll fail an
@@ -494,11 +555,15 @@ PK_PUBLIC uint32_t pkListLength(PKVM* vm, int list);
 // [ret] < 0 the return value will be discarded.
 PK_PUBLIC bool pkCallFunction(PKVM* vm, int fn, int argc, int argv, int ret);
 
+PK_PUBLIC bool pkCallMethodFromSlot(PKVM* vm, int instance, int method, int argc, int argv, int ret);
+
 // Calls a [method] on the [instance] with [argc] argument where [argv] is the
 // slot of the first argument. [ret] is the slot index of the return value. if
 // [ret] < 0 the return value will be discarded.
 PK_PUBLIC bool pkCallMethod(PKVM* vm, int instance, const char* method,
                             int argc, int argv, int ret);
+
+PK_PUBLIC bool pkGetMethod(PKVM* vm, int instance, const char* method, int value);
 
 // Get the attribute with [name] of the instance at the [instance] slot and
 // place it at the [index] slot. Return true on success.
@@ -518,5 +583,3 @@ PK_PUBLIC bool pkImportModule(PKVM* vm, const char* path, int index);
 #ifdef __cplusplus
 } // extern "C"
 #endif
-
-#endif // POCKETLANG_H
