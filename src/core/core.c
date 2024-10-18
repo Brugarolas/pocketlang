@@ -632,6 +632,78 @@ DEF(coreExit,
   exit((int)value);
 }
 
+DEF(coreCompile,
+  "compile(code:String) -> Closure",
+  "Compiles source code into a closure (does not execute automatically).") {
+
+  String* code;
+  if (!validateArgString(vm, 1, &code)) return;
+  vmPushTempRef(vm, &code->_super); // code.
+
+  Module* module = newModule(vm);
+  vmPushTempRef(vm, &module->_super); // module.
+  {
+    module->path = newString(vm, "@(meta)");
+    Function* body_fn = newFunction(vm, "@meta", 5, module, false,
+      NULL, NULL);
+    body_fn->arity = 0;
+
+    vmPushTempRef(vm, &body_fn->_super); // body_fn.
+    module->body = newClosure(vm, body_fn);
+    vmPopTempRef(vm); // body_fn.
+
+    CompileOptions options = newCompilerOptions();
+    options.runtime = true;
+    PkResult result = compile(vm, module, code->data, &options);
+
+    if (result == PK_RESULT_SUCCESS) {
+      ARG(0) = VAR_OBJ(module->body);
+    }
+  }
+  vmPopTempRef(vm); // module.
+  vmPopTempRef(vm); // code.
+}
+
+DEF(coreEval,
+  "eval(expression:String) -> Var",
+  "Evaluate an expression and returns the result.\n"
+  "Only global variables can be used in the expression.") {
+
+  String* expr;
+  if (!validateArgString(vm, 1, &expr)) return;
+
+  String* code = stringFormat(vm, "return (@)", expr);
+  vmPushTempRef(vm, &code->_super); // code.
+  {
+    CallFrame* frame = &vm->fiber->frames[vm->fiber->frame_count - 1];
+    Module* current_module = frame->closure->fn->owner;
+
+    Module* new_module = newModule(vm);
+    vmPushTempRef(vm, &new_module->_super); // new_module.
+    {
+      // let global variables become available
+      pkVarBufferConcat(&new_module->constants, vm,
+        &current_module->constants);
+      pkVarBufferConcat(&new_module->globals, vm,
+        &current_module->globals);
+      pkUintBufferConcat(&new_module->global_names, vm,
+        &current_module->global_names);
+
+      CompileOptions options = newCompilerOptions();
+      options.runtime = true;
+      PkResult result = compile(vm, new_module, code->data, &options);
+
+      if (result == PK_RESULT_SUCCESS) {
+        Var ret = VAR_NULL;
+        vmCallFunction(vm, new_module->body, 0, NULL, &ret);
+        ARG(0) = ret;
+      }
+    }
+    vmPopTempRef(vm); // new_module.
+  }
+  vmPopTempRef(vm); // code.
+}
+
 // List functions.
 // ---------------
 
@@ -702,6 +774,8 @@ static void initializeBuiltinFunctions(PKVM* vm) {
   INITIALIZE_BUILTIN_FN("print",     corePrint,   -1);
   INITIALIZE_BUILTIN_FN("input",     coreInput,   -1);
   INITIALIZE_BUILTIN_FN("exit",      coreExit,    -1);
+  INITIALIZE_BUILTIN_FN("compile",   coreCompile,  1);
+  INITIALIZE_BUILTIN_FN("eval",      coreEval,     1);
 
   // List functions.
   INITIALIZE_BUILTIN_FN("list_append", coreListAppend, 2);
@@ -2540,4 +2614,94 @@ void varsetSubscript(PKVM* vm, Var on, Var key, Var value) {
   VM_SET_ERROR(vm, stringFormat(vm, "$ type is not subscriptable.",
                varTypeName(on)));
   return;
+}
+
+bool varIterate(PKVM* vm, Var seq, Var* iterator, Var* value) {
+  Object* obj = AS_OBJ(seq);
+  switch (obj->type) {
+    case OBJ_STRING: {
+      if (IS_NULL(*iterator)) *iterator = VAR_NUM((double) 0);
+      uint32_t iter = (uint32_t) AS_NUM(*iterator);
+
+      // TODO: Need to consider utf8.
+      String* str = ((String*)obj);
+      if (iter >= str->length) return false;
+
+      // TODO: vm's char (and reusable) strings.
+      *value = VAR_OBJ(newStringLength(vm, str->data + iter, 1));
+      *iterator = VAR_NUM((double)iter + 1);
+      return true;
+    }
+
+    case OBJ_LIST: {
+      if (IS_NULL(*iterator)) *iterator = VAR_NUM((double) 0);
+      uint32_t iter = (uint32_t) AS_NUM(*iterator);
+
+      pkVarBuffer* elems = &((List*)obj)->elements;
+      if (iter >= elems->count) return false;
+      *value = elems->data[iter];
+      *iterator = VAR_NUM((double)iter + 1);
+      return true;
+    }
+
+    case OBJ_MAP: {
+      if (IS_NULL(*iterator)) *iterator = VAR_NUM((double) 0);
+      uint32_t iter = (uint32_t) AS_NUM(*iterator);
+
+      Map* map = (Map*)obj;
+      if (map->entries == NULL) return false;
+      MapEntry* e = map->entries + iter;
+      for (; iter < map->capacity; iter++, e++) {
+        if (!IS_UNDEF(e->key)) break;
+      }
+      if (iter >= map->capacity) return false;
+
+      *value = map->entries[iter].key;
+      *iterator = VAR_NUM((double)iter + 1);
+      return true;
+    }
+
+    case OBJ_RANGE: {
+      if (IS_NULL(*iterator)) *iterator = VAR_NUM((double) 0);
+      double iter = AS_NUM(*iterator);
+      double from = ((Range*)obj)->from;
+      double to = ((Range*)obj)->to;
+      if (from == to) return false;
+
+      double current;
+      if (from <= to) { //< Straight range.
+        current = from + iter;
+      } else {          //< Reversed range.
+        current = from - iter;
+      }
+      if (current == to) return false;
+      *value = VAR_NUM(current);
+      *iterator = VAR_NUM(iter + 1);
+      return true;
+    }
+
+    case OBJ_INST: {
+      for(;;) {
+        if (!_callBinaryOpMethod(vm, seq, *iterator, LITS__next, iterator)) break;
+        if (IS_NULL(*iterator)) return false;
+
+        if (!_callBinaryOpMethod(vm, seq, *iterator, LITS__value, value)) break;
+        return true;
+      }
+      goto _default;
+    }
+
+    case OBJ_FIBER:
+    case OBJ_CLOSURE:
+    case OBJ_MODULE:
+    case OBJ_FUNC:
+    case OBJ_METHOD_BIND:
+    case OBJ_UPVALUE:
+    case OBJ_CLASS:
+
+    default:
+    _default:
+      VM_SET_ERROR(vm, stringFormat(vm, "$ is not iterable.", varTypeName(seq)));
+  }
+  return false;
 }
