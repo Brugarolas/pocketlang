@@ -193,15 +193,21 @@ String* varToString(PKVM* vm, Var self, bool repr) {
     if (closure != NULL) {
       Var ret = VAR_NULL;
       PkResult result = vmCallMethod(vm, self, closure, 0, NULL, &ret);
-      if (result != PK_RESULT_SUCCESS) return NULL;
 
-      if (!IS_OBJ_TYPE(ret, OBJ_STRING)) {
-        VM_SET_ERROR(vm, newString(vm, "method " LITS__str " returned "
-                                       "non-string type."));
-        return NULL;
+      if (!VM_HAS_ERROR(vm)) {
+        if (result != PK_RESULT_SUCCESS) return NULL;
+        if (!IS_OBJ_TYPE(ret, OBJ_STRING)) {
+          VM_SET_ERROR(vm, newString(vm, "method " LITS__str " returned "
+                                         "non-string type."));
+          return NULL;
+        }
+        return (String*)AS_OBJ(ret);
       }
 
-      return (String*)AS_OBJ(ret);
+      // already has error -> dealing with error message
+      if (result == PK_RESULT_SUCCESS && IS_OBJ_TYPE(ret, OBJ_STRING)) {
+        return (String*)AS_OBJ(ret);
+      }
     }
 
     // If we reached here, it doesn't have a to string override. just
@@ -543,6 +549,22 @@ DEF(coreAssert,
   }
 }
 
+DEF(coreRaise,
+  "raise([message:String]) -> Null",
+  "Raise a runtime error.") {
+
+  int argc = ARGC;
+  if (argc > 1) { // raise() or raise(message).
+    RET_ERR(newString(vm, "Invalid argument count."));
+  }
+
+  if (argc == 1 && ARG(1) != VAR_NULL) {
+    vm->fiber->error = ARG(1);
+    return;
+  }
+  VM_SET_ERROR(vm, newString(vm, "No exception to reraise."));
+}
+
 DEF(coreBin,
   "bin(value:Number) -> String",
   "Returns as a binary value string with '0b' prefix.") {
@@ -876,6 +898,7 @@ static void initializeBuiltinFunctions(PKVM* vm) {
   INITIALIZE_BUILTIN_FN("help",      coreHelp,    -1);
   INITIALIZE_BUILTIN_FN("dir",       coreDir,      1);
   INITIALIZE_BUILTIN_FN("assert",    coreAssert,  -1);
+  INITIALIZE_BUILTIN_FN("raise",     coreRaise,   -1);
   INITIALIZE_BUILTIN_FN("bin",       coreBin,      1);
   INITIALIZE_BUILTIN_FN("hex",       coreHex,      1);
   INITIALIZE_BUILTIN_FN("yield",     coreYield,   -1);
@@ -1604,6 +1627,26 @@ DEF(_fiberRun,
     self->caller = vm->fiber;
     vm->fiber = self;
     self->state = FIBER_RUNNING;
+    self->trying = false;
+  }
+}
+
+DEF(_fiberTry,
+  "Fiber.try(...) -> Var",
+  "The same as Fiber.run() but store the error message in 'error' attrib "
+  "instead of exiting.") {
+
+  ASSERT(IS_OBJ_TYPE(SELF, OBJ_FIBER), OOPS);
+  Fiber* self = (Fiber*) AS_OBJ(SELF);
+
+  // Switch fiber and start execution. New fibers are marked as running in
+  // either it's stats running with vmRunFiber() or here -- inserting a
+  // fiber over a running (callee) fiber.
+  if (vmPrepareFiber(vm, self, ARGC, &ARG(1))) {
+    self->caller = vm->fiber;
+    vm->fiber = self;
+    self->state = FIBER_RUNNING;
+    self->trying = true;
   }
 }
 
@@ -1715,6 +1758,7 @@ static void initializePrimitiveClasses(PKVM* vm) {
   ADD_METHOD(PK_MODULE, "globals", _moduleGlobals, 0);
 
   ADD_METHOD(PK_FIBER,  "run",    _fiberRun,      -1);
+  ADD_METHOD(PK_FIBER,  "try",    _fiberTry,      -1);
   ADD_METHOD(PK_FIBER,  "resume", _fiberResume,   -1);
 
 #undef ADD_METHOD
@@ -2388,6 +2432,9 @@ Var varGetAttrib(PKVM* vm, Var on, String* attrib, bool skipGetter) {
 
         case CHECK_HASH("function", 0x9ed64249):
           return VAR_OBJ(fb->closure);
+
+        case CHECK_HASH("error", 0x21918751):
+          return fb->error;
       }
     } break;
 
